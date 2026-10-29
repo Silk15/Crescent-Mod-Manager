@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="12.1.4"/>
+        <PackageReference Include="Avalonia.Desktop" Version="12.1.4"/>
+        <PackageReference Include="Avalonia.Markup.Declarative" Version="12.1.2-fix-agent.1"/>
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Crescent.APIs.NexusMods\Crescent.APIs.NexusMods.csproj" />
+      <ProjectReference Include="..\Crescent.Plugins\Crescent.Plugins.csproj" />
+      <ProjectReference Include="..\Crescent.Utilities\Crescent.Utilities.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**"/>
+    </ItemGroup>
+</Project>

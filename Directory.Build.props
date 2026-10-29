@@ -1,5 +1,15 @@
 <Project>
-  <PropertyGroup>
-    <OutputPath>$(MSBuildThisFileDirectory)build\$(Configuration)\</OutputPath>
-  </PropertyGroup>
+    <PropertyGroup>
+        <CrescentInstallDir>E:\Silk\Personal\Pictures\Crescent Mod Manager</CrescentInstallDir>
+        <OutputPath>$(CrescentInstallDir)\Managed\</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+
+        <GenerateDependencyFile Condition="'$(AssemblyName)' != 'Crescent'">false</GenerateDependencyFile>
+        <GenerateRuntimeConfigurationFiles Condition="'$(AssemblyName)' != 'Crescent'">false</GenerateRuntimeConfigurationFiles>
+
+        <DebugType>embedded</DebugType>
+    </PropertyGroup>
 </Project>

@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>Crescent.Games</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
+      <PackageReference Include="Newtonsoft.Json" Version="14.0.1-beta2" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Crescent.Json.Serialization\Crescent.Json.Serialization.csproj" />
+      <ProjectReference Include="..\Crescent\Crescent.csproj" />
+    </ItemGroup>
+
+</Project>
