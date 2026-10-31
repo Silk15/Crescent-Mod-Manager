@@ -1,4 +1,4 @@
-namespace Crescent.Nexus.Authentication
+namespace Crescent.APIs.NexusMods
 {
     [Serializable]
     public class ApiKey

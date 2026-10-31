@@ -1,6 +1,7 @@
+using Avalonia;
 using Avalonia.Media;
 
-namespace Crescent.Utilities
+namespace Crescent.UI
 {
     public static class Colors
     {
@@ -16,5 +17,16 @@ namespace Crescent.Utilities
 
         public static readonly SolidColorBrush Red = new(Avalonia.Media.Colors.IndianRed);
         public static readonly SolidColorBrush Green = new(Avalonia.Media.Colors.SeaGreen);
+        
+        public static readonly LinearGradientBrush MainGradient = new()
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new GradientStop(MainPanelStart.Color, 0),
+                new GradientStop(MainPanelEnd.Color, 1)
+            }
+        };
     }
 }

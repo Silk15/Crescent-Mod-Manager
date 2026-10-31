@@ -19,11 +19,11 @@ namespace Crescent
 
         public static readonly Dictionary<string, string> AssemblyPath = new(StringComparer.OrdinalIgnoreCase);
 
-        public static event Action<string[]> onCrescentLoaded;
-
         [PublicAPI]
         public static readonly List<IStartupProcess> StartupProcesses = new();
 
+        public static event Action<string[]>? onCrescentLoaded;
+        
         public static async Task Main(string[] args)
         {
             Logger.Log($"Exe Path = \"{Environment.ProcessPath}\"", false);
@@ -41,6 +41,8 @@ namespace Crescent
             Logger.Log("Crescent runtime started!");
             await Task.Delay(-1);
         }
+
+        public static void Exit(int exitCode = 0) => Environment.Exit(exitCode);
 
         #region Assembly Loading
 
@@ -180,6 +182,8 @@ namespace Crescent
 
                     onProcessUpdated?.Invoke(startupProcess.GetTitle(completed, total));
                 }
+                
+                onProcessUpdated?.Invoke(startupProcess.GetTitle(completed, total));
             }
             
             Logger.Log(processBuilder.ToString(), false);

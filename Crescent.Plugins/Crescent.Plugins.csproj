@@ -13,6 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Crescent.APIs.NexusMods\Crescent.APIs.NexusMods.csproj" />
       <ProjectReference Include="..\Crescent.Json.Serialization\Crescent.Json.Serialization.csproj" />
       <ProjectReference Include="..\Crescent\Crescent.csproj" />
     </ItemGroup>

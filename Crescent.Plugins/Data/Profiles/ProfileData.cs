@@ -4,30 +4,29 @@ namespace Crescent.Plugins
     public class ProfileData
     {
         public string name = "Default";
-        public string? iconName;
         public List<ProfileModData> mods = new();
 
         public bool IsModInstalled(ModData modData)
         {
-            for (int i = 0; i < mods.Count; i++)
-                if (string.Equals(mods[i].modName, modData.modName, StringComparison.OrdinalIgnoreCase)) return true;
+            for (int index = 0; index < mods.Count; index++)
+                if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase)) return true;
             return false;
         }
 
         public bool IsModEnabled(ModData modData)
         {
-            for (int i = 0; i < mods.Count; i++)
-                if (string.Equals(mods[i].modName, modData.modName, StringComparison.OrdinalIgnoreCase)) return mods[i].isEnabled;
+            for (int index = 0; index < mods.Count; index++)
+                if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase)) return mods[index].isEnabled;
             return false;
         }
 
         public void SetModEnabled(ModData modData, bool isEnabled)
         {
-            for (int i = 0; i < mods.Count; i++)
+            for (int index = 0; index < mods.Count; index++)
             {
-                if (string.Equals(mods[i].modName, modData.modName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase))
                 {
-                    mods[i].isEnabled = isEnabled;
+                    mods[index].isEnabled = isEnabled;
                     return;
                 }
             }

@@ -1,7 +1,7 @@
 using System.Reflection;
 using Crescent.Plugins;
-using Crescent.Json.Serialization;
 using Crescent.Utilities;
+using Crescent.Json.Serialization;
 
 namespace Crescent.Plugins
 {
@@ -28,7 +28,7 @@ namespace Crescent.Plugins
 
                     if (!Directory.Exists(Runtime.GamesPath)) Directory.CreateDirectory(Runtime.GamesPath);
                     string dataName = gameData.Name.ToLower().Replace(" ", "");
-                    string filePath = Path.Combine(Runtime.GamesPath, dataName + ".sav");
+                    string filePath = Path.Combine(Runtime.GamesPath, gameData.Name, dataName + ".sav");
                     try
                     {
                         if (File.Exists(filePath)) gameData = await FileManager.ReadJson(type, filePath) as GameData;

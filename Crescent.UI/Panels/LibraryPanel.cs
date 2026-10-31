@@ -5,11 +5,11 @@ using Crescent.Plugins;
 
 namespace Crescent.UI
 {
-    public class Library : WrapPanel
+    public class LibraryPanel : WrapPanel
     {
-        public event Action<GameData> onGameClicked;
+        public event Action<GameData>? onGameClicked;
         
-        public Library()
+        public LibraryPanel()
         {
             Orientation = Orientation.Horizontal;
             Margin = new Thickness(30, 25, 30, 30);
@@ -19,11 +19,11 @@ namespace Crescent.UI
             foreach (GameData configuredGame in GameData.InstalledGames)
             {
                 GameCard card = SetupGame(configuredGame);
-                card.onClick += gameCard => onGameClicked?.Invoke(configuredGame);
+                card.onClick += _ => onGameClicked?.Invoke(configuredGame);
                 Children.Add(card);
             }
         }
         
-        public GameCard SetupGame(GameData game) => new GameCard(game);
+        public GameCard SetupGame(GameData game) => new(game);
     }
 }

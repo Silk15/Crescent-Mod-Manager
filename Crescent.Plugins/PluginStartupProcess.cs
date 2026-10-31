@@ -10,7 +10,7 @@ public class PluginStartupProcess : IStartupProcess
     [InitialiseOnLoad]
     public static void Initialise() => Runtime.StartupProcesses.Add(new PluginStartupProcess());
     
-    public string GetTitle(int completedTasks, int totalTasks)  => $"Loading Game Plugin{totalTasks.AsPlural()}... ({completedTasks}/{totalTasks})";
+    public string GetTitle(int completedTasks, int totalTasks)  => $"Loading Game Plugin{totalTasks.WithPlural()}... ({completedTasks}/{totalTasks})";
 
     public IEnumerable<IStartupTask> GetTasks()
     {

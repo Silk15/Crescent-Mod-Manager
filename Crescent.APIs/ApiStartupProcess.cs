@@ -9,7 +9,7 @@ public class ApiStartupProcess : IStartupProcess
     [InitialiseOnLoad]
     public static void Initialise() => Runtime.StartupProcesses.Add(new ApiStartupProcess());
 
-    public string GetTitle(int completedTasks, int totalTasks)  => $"Loading API Request{totalTasks.AsPlural()}... ({completedTasks}/{totalTasks})";
+    public string GetTitle(int completedTasks, int totalTasks)  => $"Loading API Request{totalTasks.WithPlural()}... ({completedTasks}/{totalTasks})";
 
     public IEnumerable<IStartupTask> GetTasks()
     {

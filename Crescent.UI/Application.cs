@@ -14,7 +14,11 @@ namespace Crescent.UI
         public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<Application>().UsePlatformDetect().LogToTrace();
 
         [InitialiseOnLoad]
-        public static void Initialise() => Runtime.onCrescentLoaded += strings => BuildAvaloniaApp().StartWithClassicDesktopLifetime(strings, ShutdownMode.OnMainWindowClose);
+        public static void Initialise() => Runtime.onCrescentLoaded += async args =>
+        {
+            Logger.Log(string.Join(", ", args));
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
+        };
         
         public override void Initialize() => Styles.Add(new FluentTheme());
 
@@ -41,22 +45,38 @@ namespace Crescent.UI
             MainWindow mainWindow = new();
             desktop.MainWindow = mainWindow;
 
-            ProgressWindow? activeProgressWindow = null;
-
-            GameData.OnRequestOverlapConfirmation = async (string title, string message) =>
+            ProgressDialog? activeProgressWindow = null;
+            GameData.OnOverlapConfirm = async (title, message) =>
             {
                 string inputResult = string.Empty;
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     if (desktop.MainWindow is not Window parentWindow) return;
-                    InputDialog dialog = new(title, message, true, "yes");
-                    await dialog.ShowDialog(parentWindow);
-                    inputResult = dialog.InputText ?? string.Empty;
+                    ConfirmationDialog confirmationDialog = new(title, message, false);
+            
+                    await confirmationDialog.ShowDialog(parentWindow);
+                    inputResult = confirmationDialog.InputText;
                 });
+                
                 return inputResult;
             };
 
-            GameData.OnRequestProgressShow = async () =>
+            GameData.OnConflictResolve = async conflicts =>
+            {
+                bool resolutionResult = false;
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    if (desktop.MainWindow is not Window parentWindow) return;
+                    ConflictReportDialog reportDialog = new(conflicts);
+                    
+                    await reportDialog.ShowDialog(parentWindow);
+                    resolutionResult = reportDialog.conflictsResolved;
+                });
+                
+                return resolutionResult;
+            };
+
+            GameData.OnProgressWindowOpen = async () =>
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -67,40 +87,42 @@ namespace Crescent.UI
                     }
                     catch (Exception exception)
                     {
-                        Logger.Log(exception.ToString());
+                        Logger.Error(exception.ToString());
                     }
                 });
             };
 
-            GameData.OnRequestProgressUpdate = async (int processedFiles, int totalFiles, string modName, string targetFile) =>
+            GameData.OnProgressWindowUpdate = async (int processedFiles, int totalFiles, string modName, string targetFile) =>
             {
-                if (activeProgressWindow == null) return;
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     try
                     {
-                        activeProgressWindow.UpdateProgress(processedFiles, totalFiles, modName, targetFile);
+                        if (activeProgressWindow != null) activeProgressWindow.UpdateProgress(processedFiles, totalFiles, modName, targetFile);
+                        if (mainWindow.sidebarOverlay != null) mainWindow.sidebarOverlay.UpdateProgress(processedFiles, totalFiles);
                     }
                     catch (Exception exception)
                     {
-                        Logger.Log(exception.ToString());
+                        Logger.Error(exception.ToString());
                     }
                 }, DispatcherPriority.Background);
             };
 
-            GameData.OnRequestProgressClose = async () =>
+            GameData.OnProgressWindowClose = async () =>
             {
-                if (activeProgressWindow == null) return;
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
                     try
                     {
                         activeProgressWindow?.Close();
                         activeProgressWindow = null;
+                        
+                        if (mainWindow.sidebarOverlay != null && SidebarOverlay.deploymentProgressBar != null) 
+                            SidebarOverlay.deploymentProgressBar.IsVisible = false;
                     }
                     catch (Exception exception)
                     {
-                        Logger.Log(exception.ToString());
+                        Logger.Error(exception.ToString());
                     }
                 });
             };

@@ -5,13 +5,13 @@ using Avalonia.Media;
 
 namespace Crescent.UI
 {
-    public class ProgressWindow : Window
+    public class ProgressDialog : Dialog
     {
         public TextBlock directoryTextBlock;
         public TextBlock statusTextBlock;
         public ProgressBar progressBar;
 
-        public ProgressWindow()
+        public ProgressDialog()
         {
             Title = "Deploying Mods";
             Width = 500;
@@ -36,9 +36,8 @@ namespace Crescent.UI
                 FontWeight = FontWeight.Bold,
                 Foreground = Brushes.White
             };
-            mainPanel.Children.Add(titleTextBlock);
-
-            progressBar = new ProgressBar
+            
+            progressBar = new()
             {
                 Height = 20,
                 Minimum = 0,
@@ -46,25 +45,26 @@ namespace Crescent.UI
                 Value = 0,
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
-            mainPanel.Children.Add(progressBar);
-
-            statusTextBlock = new TextBlock
+            
+            statusTextBlock = new()
             {
                 Text = "Initialising...",
                 FontSize = 13,
                 Foreground = Brushes.LightGray
             };
-            mainPanel.Children.Add(statusTextBlock);
-
-            directoryTextBlock = new TextBlock
+            
+            directoryTextBlock = new()
             {
                 Text = "",
                 FontSize = 11,
                 Foreground = Brushes.Gray,
                 TextWrapping = TextWrapping.Wrap
             };
+            
+            mainPanel.Children.Add(titleTextBlock);
+            mainPanel.Children.Add(progressBar);
+            mainPanel.Children.Add(statusTextBlock);
             mainPanel.Children.Add(directoryTextBlock);
-
             Content = mainPanel;
         }
 
@@ -73,8 +73,8 @@ namespace Crescent.UI
             double percentage = total > 0 ? current / total * 100 : 0;
             progressBar.Value = percentage;
             
-            statusTextBlock.Text = string.Concat("Deploying: ", modName, " (", current, " / ", total, ")");
-            directoryTextBlock.Text = string.Concat("Target: ", targetDirectory);
+            statusTextBlock.Text = $"Deploying: {modName} ({current}/{total})";
+            directoryTextBlock.Text = $"Target: {targetDirectory}";
         }
     }
 }

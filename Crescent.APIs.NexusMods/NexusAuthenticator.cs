@@ -3,7 +3,7 @@ using Crescent.Json.Serialization;
 using Crescent.Utilities;
 using Newtonsoft.Json.Linq;
 
-namespace Crescent.Nexus.Authentication
+namespace Crescent.APIs.NexusMods
 {
     public static class NexusAuthenticator
     {
@@ -24,7 +24,7 @@ namespace Crescent.Nexus.Authentication
         
         public class LoadApiKeyTask : IStartupTask
         {
-            public string GetName() => GetType().FullName;
+            public string GetName() => GetType().FullName!;
 
             public async Task ExecuteAsync(Action<string> updateTask)
             {
@@ -41,7 +41,7 @@ namespace Crescent.Nexus.Authentication
 
         public class SignInTask : IStartupTask
         {
-            public string GetName() => GetType().FullName;
+            public string GetName() => GetType().FullName!;
             
             public async Task ExecuteAsync(Action<string>? updateTask)
             {

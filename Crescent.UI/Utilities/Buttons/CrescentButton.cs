@@ -2,19 +2,21 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
-using Colors = Crescent.Utilities.Colors;
 
 namespace Crescent.UI
 {
     public class CrescentButton : Button
     {
         public ButtonStyle buttonStyle;
-        public IBrush customColor;
+        public IBrush? customColor;
         
         public float hoverScale = 1.05f;
         public float pressedScale = 0.95f;
+
+        public event Action? onClick;
         
         public CrescentButton(IBrush customColor) : this(ButtonStyle.Custom)
         {
@@ -24,6 +26,10 @@ namespace Crescent.UI
 
         public CrescentButton(ButtonStyle buttonStyle)
         {
+            HorizontalContentAlignment = HorizontalAlignment.Center;
+            VerticalContentAlignment = VerticalAlignment.Center;
+            FontWeight = FontWeight.SemiBold;
+            Height = 35;
             this.buttonStyle = buttonStyle;
             CornerRadius = new CornerRadius(8);
             Height = 40;
@@ -83,6 +89,8 @@ namespace Crescent.UI
                 RenderTransform = TransformOperations.Parse($"scale({value})");
                 Background = IsPointerOver ? Colors.Hover : null;
             }
+            
+            onClick?.Invoke();
         }
         
         #endregion

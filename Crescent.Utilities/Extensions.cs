@@ -1,14 +1,73 @@
+using System.Diagnostics;
 using System.Reflection;
+using System.Text;
 
 namespace Crescent.Utilities
 {
     public static class Extensions
     {
-        public static string AsPlural(this int value) => value == 1 ? "" : "s";
-        
-        public static bool IsArchive(this string fileName) => fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".7z", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".rar", StringComparison.OrdinalIgnoreCase);
+        public static readonly List<char> BlacklistedCharacters = new()
+        { 
+            '1',
+            '2',
+            '3',
+            '4',
+            '5',
+            '6',
+            '7',
+            '8',
+            '9',
+            '0',
+            '.',
+            ','
+        };
 
-        public static bool IsNativeBinary(this string fileName) => fileName.StartsWith("clr", StringComparison.OrdinalIgnoreCase) || fileName.StartsWith("host", StringComparison.OrdinalIgnoreCase) || fileName.Contains("native", StringComparison.OrdinalIgnoreCase) || fileName.Equals("msquic.dll", StringComparison.OrdinalIgnoreCase) || fileName.Equals("sni.dll", StringComparison.OrdinalIgnoreCase) || fileName.Equals("vcruntime140_app.dll", StringComparison.OrdinalIgnoreCase) || !fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+        public static readonly List<string> Archives = new()
+        {
+            ".zip",
+            ".rar",
+            ".7z"
+        };
+        
+        public static string WithPlural(this int value) => value == 1 ? "" : "s";
+
+        public static string WithoutNumbers(this string value)
+        {
+            StringBuilder stringBuilder = new();
+            for (int i = 0; i < value.Length; i++)
+            {
+                char character = value[i];
+                if (!BlacklistedCharacters.Contains(character)) stringBuilder.Append(character);
+            }
+            
+            return stringBuilder.ToString();
+        }
+
+        public static string WithoutSpaces(this string value)
+        {
+            value = value.Replace(" ", string.Empty);
+            return value;
+        }
+        
+        public static bool IsArchive(this string fileName) => Archives.Any(a => fileName.EndsWith(a, StringComparison.OrdinalIgnoreCase));
+    
+        public static bool IsNativeBinary(this string fileName) => 
+            fileName.StartsWith("clr", StringComparison.OrdinalIgnoreCase) 
+            || fileName.StartsWith("host", StringComparison.OrdinalIgnoreCase) 
+            || fileName.Contains("native", StringComparison.OrdinalIgnoreCase) 
+            || fileName.Equals("msquic.dll", StringComparison.OrdinalIgnoreCase) 
+            || fileName.Equals("sni.dll", StringComparison.OrdinalIgnoreCase) 
+            || fileName.Equals("vcruntime140_app.dll", StringComparison.OrdinalIgnoreCase)
+            || !fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+
+        public static void TryOpen(this string value)
+        {
+            if (!File.Exists(value) || !Directory.Exists(value)) return;
+            Process.Start(new ProcessStartInfo(value)
+            {
+                UseShellExecute = true
+            });
+        }
 
         public static bool AnyEquals(this IEnumerable<string> collection, string value)
         {

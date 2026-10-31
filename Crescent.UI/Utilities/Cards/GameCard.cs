@@ -6,9 +6,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Transformation;
-using Avalonia.Platform;
 using Crescent.Plugins;
-using Colors = Crescent.Utilities.Colors;
 
 namespace Crescent.UI
 {
@@ -46,7 +44,7 @@ namespace Crescent.UI
                 Text = game.Name,
                 FontWeight = FontWeight.Bold,
                 Margin = new Thickness(12, 10, 12, 2),
-                Foreground = Brushes.White,
+                
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -89,7 +87,7 @@ namespace Crescent.UI
                 {
                     Text = game.Name,
                     FontWeight = FontWeight.Bold,
-                    Foreground = Brushes.White,
+                    
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
