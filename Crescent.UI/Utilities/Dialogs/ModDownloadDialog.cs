@@ -6,12 +6,14 @@ using Avalonia.Threading;
 using Crescent.Plugins;
 using System.Text.RegularExpressions;
 using Avalonia.Controls.Primitives;
+using Avalonia.Platform;
 using Crescent.APIs.NexusMods;
+using Crescent.Utilities;
 using Newtonsoft.Json.Linq;
 
 namespace Crescent.UI
 {
-    public class ModDownloadDialog : Window
+    public class ModDownloadDialog : Dialog
     {
         private TextBlock? statusBlock;
         private ProgressBar? progressBar;
@@ -22,21 +24,19 @@ namespace Crescent.UI
 
         public ModDownloadDialog(GameData gameData, string modPageUrl)
         {
-            Title = "Download Mod & Dependencies";
-            Width = 500;
-            Height = 300;
+            Title = "Download Mod";
+            SizeToContent = SizeToContent.Height;
+            Width = 600;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            Background = new SolidColorBrush(Color.FromArgb(255, 37, 37, 38));
-            Foreground = Brushes.White;
+            Background = Colors.MainGradient;
             CanResize = false;
+            Icon = new WindowIcon(AssetLoader.Open(new Uri(MainWindow.IconUri)));
 
             StackPanel mainPanel = GetMainLayout();
             Content = mainPanel;
 
             StartDownload(gameData, modPageUrl);
         }
-
-        #region UI
 
         public StackPanel GetMainLayout()
         {
@@ -50,19 +50,20 @@ namespace Crescent.UI
             statusBlock = new()
             {
                 Text = "Initialising download...",
-                FontSize = 16,
+                FontSize = 20,
                 FontWeight = FontWeight.Bold,
-                TextWrapping = TextWrapping.Wrap
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center,
             };
-            mainPanel.Children.Add(statusBlock);
 
             progressBar = new()
             {
-                Height = 20,
+                Height = 30,
                 IsIndeterminate = true,
-                HorizontalAlignment = HorizontalAlignment.Stretch
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Margin = new(0, 0, 10, 0),
+                Foreground = Brushes.CornflowerBlue
             };
-            mainPanel.Children.Add(progressBar);
 
             detailsPanel = new()
             {
@@ -71,15 +72,34 @@ namespace Crescent.UI
 
             ScrollViewer detailsScrollViewer = new()
             {
-                Height = 120,
+                Height = 220,
                 Content = detailsPanel,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
-            mainPanel.Children.Add(detailsScrollViewer);
+            Border border = new()
+            {
+                Background = Colors.MainPanelEnd,
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(10)
+            };
+
+            border.Child = detailsScrollViewer;
+
+            Grid grid = new();
 
             closeButton = GetCloseButton();
-            mainPanel.Children.Add(closeButton);
-
+            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            
+            grid.Children.Add(progressBar);
+            Grid.SetColumn(progressBar, 0);
+            
+            grid.Children.Add(closeButton);
+            Grid.SetColumn(closeButton, 1);
+            
+            mainPanel.Children.Add(statusBlock);
+            mainPanel.Children.Add(border);
+            mainPanel.Children.Add(grid);
             return mainPanel;
         }
 
@@ -89,17 +109,14 @@ namespace Crescent.UI
             {
                 Content = "Close",
                 Width = 90,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                IsEnabled = false
+                Height = 30,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Padding = new(10, 0, 0, 0)
             };
 
             button.onClick += () => Close();
             return button;
         }
-
-        #endregion
-
-        #region Downloads
 
         private void StartDownload(GameData gameData, string modPageUrl)
         {
@@ -112,9 +129,8 @@ namespace Crescent.UI
                     {
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            statusBlock.Text = "Invalid Nexus Mods URL.";
+                            statusBlock.Text = "Invalid Nexus Mods Url :(";
                             progressBar.IsIndeterminate = false;
-                            closeButton.IsEnabled = true;
                         });
                         return;
                     }
@@ -122,8 +138,10 @@ namespace Crescent.UI
                     string gameDomain = match.Groups[1].Value;
                     string nexusId = match.Groups[2].Value;
 
-                    await Dispatcher.UIThread.InvokeAsync(() => statusBlock.Text = $"Fetching mod data for ID: {nexusId}");
                     JObject? modDetails = await NexusUtils.GetModDetailsJsonAsync(gameDomain, nexusId);
+                    string modName = modDetails?["name"]?.ToString() ?? nexusId;
+
+                    await Dispatcher.UIThread.InvokeAsync(() => statusBlock.Text = $"Fetching mod data for: {modName}");
                     JObject? modFiles = await NexusUtils.GetModFilesJsonAsync(gameDomain, nexusId);
                     if (modFiles == null)
                     {
@@ -131,7 +149,6 @@ namespace Crescent.UI
                         {
                             statusBlock.Text = "Failed to retrieve mod files.";
                             progressBar.IsIndeterminate = false;
-                            closeButton.IsEnabled = true;
                         });
                         return;
                     }
@@ -143,7 +160,6 @@ namespace Crescent.UI
                         {
                             statusBlock.Text = "No files found for this mod.";
                             progressBar.IsIndeterminate = false;
-                            closeButton.IsEnabled = true;
                         });
                         return;
                     }
@@ -198,12 +214,20 @@ namespace Crescent.UI
                     for (int queueIndex = 0; queueIndex < downloadQueueIds.Count; queueIndex++)
                     {
                         string currentNexusId = downloadQueueIds[queueIndex];
+                        string currentModName = currentNexusId;
+                        if (string.Equals(currentNexusId, nexusId, StringComparison.OrdinalIgnoreCase)) currentModName = modName;
+                        else
+                        {
+                            JObject? reqDetails = await NexusUtils.GetModDetailsJsonAsync(gameDomain, currentNexusId);
+                            currentModName = reqDetails?["name"]?.ToString() ?? currentNexusId;
+                        }
+
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            statusBlock.Text = $"Downloading mod ({queueIndex + 1}/{downloadQueueIds.Count}) Mod ID: {currentNexusId}";
-                            detailsPanel.Children.Add(new TextBlock
+                            statusBlock.Text = $"Downloading {modName} ({queueIndex + 1}/{downloadQueueIds.Count})";
+                            detailsPanel!.Children.Add(new TextBlock
                             {
-                                Text = $"Queued download: Mod ID {currentNexusId}",
+                                Text = $"• {currentModName}",
                                 Foreground = Brushes.LightGray,
                                 FontSize = 12
                             });
@@ -252,7 +276,6 @@ namespace Crescent.UI
                         statusBlock.Text = "All downloads completed successfully!";
                         progressBar.IsIndeterminate = false;
                         progressBar.Value = 100;
-                        closeButton.IsEnabled = true;
                         DownloadSuccess = true;
                     });
                 }
@@ -263,12 +286,9 @@ namespace Crescent.UI
                     {
                         statusBlock.Text = "An error occurred during download.";
                         progressBar.IsIndeterminate = false;
-                        closeButton.IsEnabled = true;
                     });
                 }
             });
         }
-
-        #endregion
     }
 }

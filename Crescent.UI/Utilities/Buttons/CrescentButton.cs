@@ -17,6 +17,8 @@ namespace Crescent.UI
         public float pressedScale = 0.95f;
 
         public event Action? onClick;
+
+        public bool Scale { get; set; } = true;
         
         public CrescentButton(IBrush customColor) : this(ButtonStyle.Custom)
         {
@@ -46,7 +48,7 @@ namespace Crescent.UI
             Background = GetBackground();
         }
 
-        public IBrush GetBackground() => buttonStyle switch
+        public IBrush? GetBackground() => buttonStyle switch
         {
             ButtonStyle.Transparent => Brushes.Transparent,
             ButtonStyle.Translucent => Colors.Button,
@@ -59,14 +61,14 @@ namespace Crescent.UI
         protected override void OnPointerEntered(PointerEventArgs evt)
         {
             base.OnPointerEntered(evt);
-            RenderTransform = TransformOperations.Parse($"scale({hoverScale})");
+            if (Scale) RenderTransform = TransformOperations.Parse($"scale({hoverScale})");
             Background = Colors.Hover;
         }
 
         protected override void OnPointerExited(PointerEventArgs evt)
         {
             base.OnPointerExited(evt);
-            RenderTransform = TransformOperations.Parse("scale(1.0)");
+            if (Scale) RenderTransform = TransformOperations.Parse("scale(1.0)");
             Background = GetBackground();
         }
 
@@ -75,7 +77,7 @@ namespace Crescent.UI
             base.OnPointerPressed(evt);
             if (evt.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             {
-                RenderTransform = TransformOperations.Parse($"scale({pressedScale})");
+                if (Scale) RenderTransform = TransformOperations.Parse($"scale({pressedScale})");
                 Background = Colors.Click;
             }
         }
@@ -86,7 +88,7 @@ namespace Crescent.UI
             if (evt.InitialPressMouseButton == MouseButton.Left)
             {
                 float value = IsPointerOver ? hoverScale : 1.0f;
-                RenderTransform = TransformOperations.Parse($"scale({value})");
+                if (Scale) RenderTransform = TransformOperations.Parse($"scale({value})");
                 Background = IsPointerOver ? Colors.Hover : null;
             }
             

@@ -20,6 +20,7 @@ namespace Crescent.UI
             CanResize = false;
             WindowDecorations = WindowDecorations.BorderOnly;
             Background = Brushes.Transparent;
+            Icon = new WindowIcon(AssetLoader.Open(new Uri(MainWindow.IconUri)));
 
             Border imageCoverBorder = new()
             {

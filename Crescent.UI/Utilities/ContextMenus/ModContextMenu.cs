@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Crescent.Plugins;
@@ -10,6 +11,7 @@ namespace Crescent.UI
         public static ContextMenu Get(GameData gameData, ModData modData, ModsTab modsTab)
         {
             ContextMenu contextMenu = new();
+            contextMenu.Padding = new Thickness(10, 0, 10, 0);
             contextMenu.Background = Colors.MainPanelEnd;
             contextMenu.CornerRadius = new(8);
             contextMenu.ClipToBounds = true;
@@ -38,36 +40,35 @@ namespace Crescent.UI
 
             contextMenu.Items.Add(GetRenameButton(gameData, modData, modsTab));
             contextMenu.Items.Add(GetDeleteButton(gameData, modData, modsTab));
-
             return contextMenu;
         }
 
         #region Buttons
         
-        public static CrescentMenuItem GetNexusOpenButton(ModData modData)
+        public static MenuItem GetNexusOpenButton(ModData modData)
         {
-            CrescentMenuItem nexusMenuItem = new()
+            MenuItem nexusMenuItem = new()
             {
                 Header = "Open Nexus"
             };
-            nexusMenuItem.onClick += () => modData.url.nexusUrl.TryOpen();
+            nexusMenuItem.Click += (_, _) => modData.url.nexusUrl.TryOpen();
             return nexusMenuItem;
         }
 
-        public static CrescentMenuItem GetOpenFilesButton(ModData modData)
+        public static MenuItem GetOpenFilesButton(ModData modData)
         { 
-            CrescentMenuItem openFolderMenuItem = new()
+            MenuItem openFolderMenuItem = new()
             {
                 Header = "Open Folder"
             };
             
-            openFolderMenuItem.onClick += () => modData.filePath.TryOpen();
+            openFolderMenuItem.Click += (_, _) => modData.filePath.TryOpen();
             return openFolderMenuItem;
         }
 
-        public static CrescentMenuItem GetProfilesButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem GetProfilesButton(GameData gameData, ModData modData, ModsTab modsTab)
         {
-            CrescentMenuItem profileMenu = new()
+            MenuItem profileMenu = new()
             {
                 Header = "Profiles"
             };
@@ -77,13 +78,13 @@ namespace Crescent.UI
             {
                 ProfileData profile = allProfiles[i];
                 bool isEnabledInProfile = profile.IsModEnabled(modData);
-                CrescentMenuItem profileItem = new()
+                MenuItem profileItem = new()
                 {
                     Header = $"{profile.name} {(isEnabledInProfile ? " (Enabled)" : " (Disabled)")}",
                     Foreground = isEnabledInProfile ? Brushes.LightGreen : Brushes.IndianRed
                 };
 
-                profileItem.onClick += async () =>
+                profileItem.Click += async (_, _) =>
                 {
                     bool newState = !profile.IsModEnabled(modData);
                     profile.SetModEnabled(modData, newState);
@@ -97,14 +98,14 @@ namespace Crescent.UI
             return profileMenu;
         }
 
-        public static CrescentMenuItem GetUpdateButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem GetUpdateButton(GameData gameData, ModData modData, ModsTab modsTab)
         {
-            CrescentMenuItem checkUpdateItem = new()
+            MenuItem checkUpdateItem = new()
             {
                 Header = modData.UpdateAvailable ? "Update" : "Check for Update"
             };
 
-            checkUpdateItem.onClick += async () =>
+            checkUpdateItem.Click += async (_, _) =>
             {
                 RenderedMod? renderedMod = modsTab.renderedMods.Find(item => item.modData == modData);
                 if (modData.UpdateAvailable)
@@ -137,14 +138,14 @@ namespace Crescent.UI
             return checkUpdateItem;
         }
 
-        public static CrescentMenuItem? GetRenameButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem? GetRenameButton(GameData gameData, ModData modData, ModsTab modsTab)
         {
-            CrescentMenuItem renameButton = new()
+            MenuItem renameButton = new()
             {
                 Header = "Rename"
             };
             
-            renameButton.onClick += async () =>
+            renameButton.Click += async (_, _) =>
             {
                 Window? parentWindow = TopLevel.GetTopLevel(modsTab) as Window;
                 if (parentWindow != null)
@@ -165,14 +166,14 @@ namespace Crescent.UI
             return renameButton;
         }
 
-        public static CrescentMenuItem GetDeleteButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem GetDeleteButton(GameData gameData, ModData modData, ModsTab modsTab)
         {
-            CrescentMenuItem deleteButton = new()
+            MenuItem deleteButton = new()
             {
                 Header = "Delete"
             };
             
-            deleteButton.onClick += async () =>
+            deleteButton.Click += async (_, _) =>
             {
                 gameData.WithdrawMod(modData);
                 gameData.installedMods.Remove(modData);

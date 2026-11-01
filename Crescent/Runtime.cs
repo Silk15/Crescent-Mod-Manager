@@ -23,6 +23,7 @@ namespace Crescent
         public static readonly List<IStartupProcess> StartupProcesses = new();
 
         public static event Action<string[]>? onCrescentLoaded;
+        public static event Action onClosed;
         
         public static async Task Main(string[] args)
         {
@@ -39,6 +40,7 @@ namespace Crescent
             }
 
             Logger.Log("Crescent runtime started!");
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => onClosed?.Invoke();
             await Task.Delay(-1);
         }
 

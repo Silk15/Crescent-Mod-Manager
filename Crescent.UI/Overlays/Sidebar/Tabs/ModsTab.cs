@@ -316,6 +316,7 @@ namespace Crescent.UI
             actionButtonPanel.Children.Add(GetTargetButton());
             actionButtonPanel.Children.Add(new Separator
             {
+                Width = 1,
                 Height = 35,
                 Background = Colors.Separator,
                 Padding = new(5, 0, 5, 0)

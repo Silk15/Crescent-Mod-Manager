@@ -4,35 +4,26 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Crescent.APIs.NexusMods;
 using Crescent.Utilities;
 using Crescent.Plugins;
 
 namespace Crescent.UI
 {
-    public class ModUpdateDialog : Window
+    public class ModUpdateDialog : Dialog
     {
         public bool UpdateConfirmed { get; private set; }
 
         public ModUpdateDialog(ModData modData)
         {
-            Title = modData.DisplayName.WithoutNumbers();
-            Width = 900;
-            Height = 500;
+            Title = $"Update Mod";
+            Width = 800;
+            Height = 475;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            Background = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                GradientStops = new GradientStops
-                {
-                    new GradientStop(Colors.MainPanelStart.Color, 0),
-                    new GradientStop(Colors.MainPanelEnd.Color, 1)
-                }
-            };
-
-            Foreground = Brushes.White;
+            Background = Colors.MainGradient;
             CanResize = false;
+            Icon = new WindowIcon(AssetLoader.Open(new Uri(MainWindow.IconUri)));
 
             StackPanel mainPanel = new()
             {
@@ -45,7 +36,7 @@ namespace Crescent.UI
             TextBlock titleBlock = new()
             {
                 Text = $"Update Available for {modData.DisplayName.WithoutNumbers()}",
-                FontSize = 22,
+                FontSize = 20,
                 FontWeight = FontWeight.Bold,
                 TextAlignment = TextAlignment.Center,
             };
@@ -59,8 +50,6 @@ namespace Crescent.UI
 
             Content = mainPanel;
         }
-
-        #region UI
 
         public Grid GetDiffGrid(ModData modData)
         {
@@ -158,7 +147,7 @@ namespace Crescent.UI
 
             ScrollViewer descriptionScrollViewer = new()
             {
-                Height = 120,
+                Height = 100,
                 Content = new TextBlock
                 {
                     Text = $"Description:\n{(string.IsNullOrEmpty(cleanedDescription) ? "No description provided." : cleanedDescription)}",
@@ -169,7 +158,7 @@ namespace Crescent.UI
             
             ScrollViewer changelogScrollViewer = new()
             {
-                Height = 120,
+                Height = 100,
                 Content = new TextBlock
                 {
                     Text = $"Changelog:\n {(string.IsNullOrEmpty(cleanedChangelog) ? "No changelog provided." : cleanedChangelog)}",
@@ -177,6 +166,11 @@ namespace Crescent.UI
                 },
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
+            
+            panel.Children.Add(descriptionScrollViewer);
+            panel.Children.Add(changelogScrollViewer);
+            border.Child = panel;
+            
             panel.Children.Add(new TextBlock
             {
                 Text = $"Downloads: {modData.LatestDownloads} | Published: {modData.LatestPublishDate}",
@@ -184,9 +178,6 @@ namespace Crescent.UI
                 FontSize = 12
             });
             
-            panel.Children.Add(descriptionScrollViewer);
-            panel.Children.Add(changelogScrollViewer);
-            border.Child = panel;
             return border;
         }
 
@@ -204,10 +195,6 @@ namespace Crescent.UI
             buttonPanel.Children.Add(GetCancelButton());
             return buttonPanel;
         }
-
-        #endregion
-
-        #region Buttons
 
         public CrescentButton GetUpdateButton()
         {
@@ -231,7 +218,8 @@ namespace Crescent.UI
             CrescentButton button = new(ButtonStyle.Translucent)
             {
                 Content = "View On Nexus",
-                Width = 110
+                Width = 110,
+                Padding = new(2, 0, 2, 0)
             };
             
             button.onClick += () => Process.Start(new ProcessStartInfo($"{modData.url.nexusUrl}?tab=files")
@@ -258,7 +246,5 @@ namespace Crescent.UI
             
             return button;
         }
-
-        #endregion
     }
 }

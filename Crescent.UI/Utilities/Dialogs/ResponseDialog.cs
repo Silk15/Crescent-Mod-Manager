@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 
 namespace Crescent.UI
 {
@@ -9,15 +10,15 @@ namespace Crescent.UI
     {
         public string InputText { get; set; } = string.Empty;
 
-        public ResponseDialog(string windowTitle, double height)
+        public ResponseDialog(string windowTitle)
         {
             Title = windowTitle;
-            Width = 420;
-            Height = height;
+            Width = 600;
+            SizeToContent = SizeToContent.Height;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
-            Background = new SolidColorBrush(Color.FromArgb(255, 37, 37, 38));
-            Foreground = Brushes.White;
+            Background = Colors.MainGradient;
             CanResize = false;
+            Icon = new WindowIcon(AssetLoader.Open(new Uri(MainWindow.IconUri)));
         }
 
         public static StackPanel GetBasePanel(string promptText) => new()
@@ -30,7 +31,6 @@ namespace Crescent.UI
                 new TextBlock
                 {
                     Text = promptText,
-                    
                     FontWeight = FontWeight.SemiBold,
                     TextWrapping = TextWrapping.Wrap
                 }

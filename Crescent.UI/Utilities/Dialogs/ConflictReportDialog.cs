@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Crescent.Plugins;
 
 namespace Crescent.UI
@@ -15,15 +16,13 @@ namespace Crescent.UI
         public ConflictReportDialog(Dictionary<string, List<ModData>> conflicts)
         {
             this.conflicts = conflicts;
-            Title = "Mod File Conflicts Detected!";
-            Width = 850;
-            Height = 600;
-            
+            Title = "Mod File Conflicts";
+            Width = 600;
+            Height = 350;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Background = Colors.MainGradient;
-            
-            Foreground = Brushes.White;
             CanResize = false;
+            Icon = new WindowIcon(AssetLoader.Open(new Uri(MainWindow.IconUri)));
             
             StackPanel mainPanel = new()
             {
@@ -38,7 +37,6 @@ namespace Crescent.UI
                 Text = "File Overwrite & Conflict Resolution",
                 FontSize = 22,
                 FontWeight = FontWeight.Bold,
-                
                 TextAlignment = TextAlignment.Center
             };
             
@@ -67,7 +65,7 @@ namespace Crescent.UI
             ScrollViewer conflictScrollViewer = new()
             {
                 Content = conflictListStack,
-                Height = 400,
+                Height = 300,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
@@ -111,7 +109,6 @@ namespace Crescent.UI
                     modsStack.Children.Add(new TextBlock
                     {
                         Text = mod.DisplayName,
-                        
                         FontWeight = FontWeight.SemiBold
                     });
                 }

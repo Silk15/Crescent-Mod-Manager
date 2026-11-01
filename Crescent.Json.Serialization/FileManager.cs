@@ -19,18 +19,10 @@ namespace Crescent.Json.Serialization
             return jsonSerializerSettings;
         }
 
-        public static bool IsSafeDirectory(string directory)
-        {
-            if (!Directory.Exists(Runtime.DataPath)) Directory.CreateDirectory(Runtime.DataPath);
-            if (!directory.StartsWith(Runtime.DataPath)) return false;
-            return true;
-        }
-
         #region Json Manipulation
 
         public static async Task<T> ReadJson<T>(string filePath)
         {
-            if (!IsSafeDirectory(filePath)) return default!;
             if (!File.Exists(filePath))
             {
                 Logger.Log($"File {filePath} does not exist!");
@@ -62,7 +54,6 @@ namespace Crescent.Json.Serialization
 
         public static async Task WriteJson<T>(string filePath, T obj)
         {
-            if (!IsSafeDirectory(filePath)) return;
             if (typeof(T).IsAbstract)
             {
                 Logger.Log($"Cannot serialize abstract type {typeof(T).FullName}!");
@@ -82,7 +73,6 @@ namespace Crescent.Json.Serialization
 
         public static async Task<object?> ReadJson(Type type, string filePath)
         {
-            if (!IsSafeDirectory(filePath)) return null;
             if (!File.Exists(filePath))
             {
                 Logger.Log($"File {filePath} does not exist!");
@@ -110,9 +100,6 @@ namespace Crescent.Json.Serialization
 
         public static void DeleteJson(string filePath)
         {
-            if (!IsSafeDirectory(filePath))
-                return;
-
             if (!File.Exists(filePath))
             {
                 Logger.Log($"File {filePath} does not exist!");

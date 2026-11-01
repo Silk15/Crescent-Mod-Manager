@@ -17,9 +17,9 @@ namespace Crescent.UI
         public static void Initialise() => Runtime.onCrescentLoaded += async args =>
         {
             Logger.Log(string.Join(", ", args));
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
         };
-        
+
         public override void Initialize() => Styles.Add(new FluentTheme());
 
         public override async void OnFrameworkInitializationCompleted()
@@ -33,7 +33,7 @@ namespace Crescent.UI
             LoadingWindow loadingWindow = new();
             desktop.MainWindow = loadingWindow;
             loadingWindow.Show();
-            
+
             await Runtime.LoadCrescentAsync(process => loadingWindow.UpdateProcess(process), task => loadingWindow.UpdateStatus(task));
             AssetLoader.InvalidateAssemblyCache();
             OpenMainWindow(desktop);
@@ -53,11 +53,11 @@ namespace Crescent.UI
                 {
                     if (desktop.MainWindow is not Window parentWindow) return;
                     ConfirmationDialog confirmationDialog = new(title, message, false);
-            
+
                     await confirmationDialog.ShowDialog(parentWindow);
                     inputResult = confirmationDialog.InputText;
                 });
-                
+
                 return inputResult;
             };
 
@@ -68,11 +68,11 @@ namespace Crescent.UI
                 {
                     if (desktop.MainWindow is not Window parentWindow) return;
                     ConflictReportDialog reportDialog = new(conflicts);
-                    
+
                     await reportDialog.ShowDialog(parentWindow);
                     resolutionResult = reportDialog.conflictsResolved;
                 });
-                
+
                 return resolutionResult;
             };
 
@@ -116,8 +116,8 @@ namespace Crescent.UI
                     {
                         activeProgressWindow?.Close();
                         activeProgressWindow = null;
-                        
-                        if (mainWindow.sidebarOverlay != null && SidebarOverlay.deploymentProgressBar != null) 
+
+                        if (mainWindow.sidebarOverlay != null && SidebarOverlay.deploymentProgressBar != null)
                             SidebarOverlay.deploymentProgressBar.IsVisible = false;
                     }
                     catch (Exception exception)
@@ -127,8 +127,7 @@ namespace Crescent.UI
                 });
             };
 
-            mainWindow.Show();
-            mainWindow.Closed += (sender, args) =>
+            void ExitApplication()
             {
                 foreach (GameData configuredGame in GameData.InstalledGames)
                 {
@@ -143,8 +142,54 @@ namespace Crescent.UI
                         Logger.Error(exception.ToString());
                     }
                 }
+
                 Environment.Exit(0);
+            }
+
+            mainWindow.Closing += (sender, args) =>
+            {
+                args.Cancel = true;
+                mainWindow.Hide();
             };
+
+            TrayIcon trayIcon = new()
+            {
+                ToolTipText = MainWindow.TitleText,
+                Icon = mainWindow.Icon,
+                Menu = new NativeMenu()
+            };
+
+            NativeMenuItem openItem = new("Open");
+            openItem.Click += (s, e) =>
+            {
+                mainWindow.Show();
+                mainWindow.WindowState = WindowState.Normal;
+                mainWindow.Activate();
+            };
+
+            NativeMenuItem exitItem = new("Exit");
+            exitItem.Click += (s, e) => ExitApplication();
+
+            trayIcon.Menu.Items.Add(openItem);
+            trayIcon.Menu.Items.Add(exitItem);
+
+            trayIcon.Clicked += (s, e) =>
+            {
+                if (mainWindow.IsVisible) mainWindow.Hide();
+                else
+                {
+                    mainWindow.Show();
+                    mainWindow.WindowState = WindowState.Normal;
+                    mainWindow.Activate();
+                }
+            };
+
+            TrayIcon.SetIcons(this, new TrayIcons
+            {
+                trayIcon
+            });
+            
+            mainWindow.Show();
         }
     }
 }

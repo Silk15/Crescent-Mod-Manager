@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 
 namespace Crescent.UI
 {
@@ -13,13 +14,22 @@ namespace Crescent.UI
 
         public ProgressDialog()
         {
-            Title = "Deploying Mods";
-            Width = 500;
-            Height = 180;
+            Title = "Deploy Mods";
+            SizeToContent = SizeToContent.WidthAndHeight;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             CanResize = false;
-            Background = new SolidColorBrush(Color.FromArgb(255, 32, 32, 32));
+            Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops = new GradientStops
+                {
+                    new GradientStop(Colors.MainPanelStart.Color, 0),
+                    new GradientStop(Colors.MainPanelEnd.Color, 1)
+                }
+            };
             Foreground = Brushes.White;
+            Icon = new WindowIcon(AssetLoader.Open(new Uri(MainWindow.IconUri)));
 
             StackPanel mainPanel = new()
             {
@@ -32,33 +42,37 @@ namespace Crescent.UI
             TextBlock titleTextBlock = new()
             {
                 Text = "Deploying...",
-                FontSize = 18,
+                FontSize = 20,
                 FontWeight = FontWeight.Bold,
-                Foreground = Brushes.White
+                Foreground = Brushes.White,
+                TextAlignment = TextAlignment.Center
             };
             
             progressBar = new()
             {
-                Height = 20,
+                Height = 30,
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0,
-                HorizontalAlignment = HorizontalAlignment.Stretch
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Foreground = Brushes.CornflowerBlue
             };
             
             statusTextBlock = new()
             {
                 Text = "Initialising...",
-                FontSize = 13,
-                Foreground = Brushes.LightGray
+                FontSize = 14,
+                Foreground = Brushes.LightGray,
+                TextAlignment = TextAlignment.Center
             };
             
             directoryTextBlock = new()
             {
                 Text = "",
-                FontSize = 11,
+                FontSize = 12,
                 Foreground = Brushes.Gray,
-                TextWrapping = TextWrapping.Wrap
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center
             };
             
             mainPanel.Children.Add(titleTextBlock);

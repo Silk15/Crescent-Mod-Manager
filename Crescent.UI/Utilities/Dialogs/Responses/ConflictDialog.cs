@@ -6,7 +6,7 @@ namespace Crescent.UI
 {
     public class ConflictDialog : ResponseDialog
     {
-        public ConflictDialog(string windowTitle, string promptText) : base(windowTitle, 180)
+        public ConflictDialog(string windowTitle, string promptText) : base(windowTitle)
         {
             StackPanel panel = GetBasePanel(promptText);
             StackPanel buttonPanel = GetButtonPanel();

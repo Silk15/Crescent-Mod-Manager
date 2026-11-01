@@ -24,6 +24,7 @@ namespace Crescent.Plugins
         
         [JsonProperty(Order = 5)] public DeploymentState deploymentState = DeploymentState.NotDeployed;
         [JsonProperty(Order = 4)] public string deploymentStatus = "Not deployed";
+        [JsonProperty(Order = 9)] public long playTime;
         
         public event Action<GameData> onDeploymentStatusChanged;
 

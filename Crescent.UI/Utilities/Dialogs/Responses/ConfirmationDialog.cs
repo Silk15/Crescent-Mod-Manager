@@ -7,7 +7,7 @@ namespace Crescent.UI
     {
         public TextBox? TextBox { get; }
 
-        public ConfirmationDialog(string windowTitle, string promptText, bool showTextBox = true, string defaultValue = "") : base(windowTitle, showTextBox ? 180 : 150)
+        public ConfirmationDialog(string windowTitle, string promptText, bool showTextBox = true, string defaultValue = "") : base(windowTitle)
         {
             StackPanel panel = GetBasePanel(promptText);
             StackPanel buttonPanel = GetButtonPanel();

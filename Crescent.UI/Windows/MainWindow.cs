@@ -2,12 +2,14 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Crescent.Plugins;
 
 namespace Crescent.UI
 {
     public class MainWindow : Window
     {
+        public const string IconUri = "avares://Crescent.UI/Assets/crescent.ico";
         public const string TitleText = "Crescent Mod Manager";
 
         public ScrollViewer? libraryScrollViewer;
@@ -33,6 +35,7 @@ namespace Crescent.UI
                 Background = GetBackgroundGradient();
                 Foreground = Brushes.White;
                 Content = GetMainGrid();
+                Icon = new WindowIcon(AssetLoader.Open(new Uri(IconUri)));
             }
             catch (Exception ex)
             {
@@ -73,11 +76,14 @@ namespace Crescent.UI
             Grid.SetColumn(sidebarOverlay!, 1);
 
             OverlaySeparator overlaySeparator = new(OverlaySeparator.Mode.Vertical);
+            sidebarOverlay!.overlaySeparator = overlaySeparator;
             bodyGrid.Children.Add(overlaySeparator);
             Grid.SetColumn(overlaySeparator, 1);
 
             mainGrid.Children.Add(bodyGrid);
             Grid.SetRow(bodyGrid, 1);
+            
+            sidebarOverlay.IsVisible = false;
             return mainGrid;
         }
 
@@ -118,6 +124,8 @@ namespace Crescent.UI
             if (libraryScrollViewer == null) return;
             libraryScrollViewer.Content = libraryPanel;
             Background = GetBackgroundGradient();
+            sidebarOverlay!.Children.Clear();
+            sidebarOverlay.IsVisible = false;
         }
 
         public void TryUpdateDeploymentStatus(GameData game)
@@ -151,7 +159,8 @@ namespace Crescent.UI
         private void OnGameClicked(GameData game)
         {
             selectedGame = game;
-            sidebarOverlay!.ShowGameSidebar(game);
+            sidebarOverlay!.IsVisible = true;
+            sidebarOverlay.ShowGameSidebar(game);
             sidebarOverlay.OpenTab<ModsTab>();
         }
 

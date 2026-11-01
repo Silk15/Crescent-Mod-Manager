@@ -15,6 +15,7 @@ namespace Crescent.UI
         public TextBlock? consoleOutput;
         public GameData? gameData;
         public SidebarOverlay? sidebarOverlay;
+        public Stopwatch stopwatch;
 
         private Process? activeProcess;
 
@@ -211,6 +212,9 @@ namespace Crescent.UI
 
                 activeProcess.EnableRaisingEvents = true;
                 activeProcess.Exited += OnGameExit;
+                stopwatch = Stopwatch.StartNew();
+                Runtime.onClosed -= OnRuntimeClosed;
+                Runtime.onClosed += OnRuntimeClosed;
             }
             catch (Exception ex)
             {
@@ -225,6 +229,7 @@ namespace Crescent.UI
             {
                 Log($"{activeProcess.ProcessName} exited!");
                 activeProcess.Close();
+                stopwatch.Stop();
             }
             catch (Exception ex)
             {
@@ -240,11 +245,21 @@ namespace Crescent.UI
                 Log($"{activeProcess.ProcessName} exited!");
                 activeProcess?.Dispose();
                 activeProcess = null;
+                
+                gameData!.playTime += stopwatch.ElapsedTicks / Stopwatch.Frequency;
+                Task.Run(async () => await gameData.SaveAsync());
+                Runtime.onClosed -= OnRuntimeClosed;
             }
             catch (Exception ex)
             {
                 Logger.Error(ex.ToString());
             }
+        }
+        
+        private void OnRuntimeClosed()
+        {
+            gameData!.playTime += stopwatch.ElapsedTicks / Stopwatch.Frequency;
+            Task.Run(async () => await gameData.SaveAsync());
         }
         
         #endregion

@@ -22,14 +22,25 @@ namespace Crescent.UI
         public static ProgressBar? deploymentProgressBar;
         public static CrescentButton? deployButton;
         public static CrescentButton? withdrawButton;
-        
+
+        public OverlaySeparator overlaySeparator;
         public StackPanel contentPanel;
         public TextBlock? deploymentText;
-        public Action? renderProfiles;
+        private Action? renderProfiles;
         public GameData? currentGame;
 
         public List<ISidebarTab> sidebarTabs = new();
         public ISidebarTab? currentTab;
+
+        public new bool IsVisible
+        {
+            get => base.IsVisible;
+            set
+            {
+                base.IsVisible = value;
+                overlaySeparator.IsVisible = value;
+            }
+        }
         
         public event Action<GameData>? onGameSelected;
         public event Action<GameData, ISidebarTab>? onTabOpened;
@@ -45,6 +56,8 @@ namespace Crescent.UI
 
             Children.Add(contentPanel);
         }
+        
+        public void RenderProfiles() => renderProfiles?.Invoke();
         
         public void ShowGameSidebar(GameData game)
         {
@@ -210,6 +223,7 @@ namespace Crescent.UI
 
             deploymentProgressBar = new()
             {
+                Foreground = Brushes.CornflowerBlue,
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0,
@@ -406,6 +420,7 @@ namespace Crescent.UI
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            headerGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
             TextBlock profileTitle = new()
             {
@@ -417,28 +432,42 @@ namespace Crescent.UI
             Grid.SetColumn(profileTitle, 0);
             Button addProfileButton = new()
             {
-                Content = "+",
+                Content = "New",
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
-                Height = 30,
-                Width = 30 * 1.2,
+                Height = 35,
+                Width = 50,
                 Background = Colors.Button,
                 Margin = new Thickness(0, 0, 4, 0)
             };
             
             Grid.SetColumn(addProfileButton, 1);
+            Button importProfileButton = new()
+            {
+                Content = "Import",
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Height = 35,
+                Width = 60,
+                Background = Colors.Button,
+                Margin = new Thickness(0, 0, 4, 0)
+            };
+            
+            Grid.SetColumn(importProfileButton, 2);
             Button toggleButton = new()
             {
                 Content = "▼",
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
-                Height = 30,
+                Height = 35,
                 Width = 30,
                 Background = Colors.Button
             };
             
-            Grid.SetColumn(toggleButton, 2);
+            Grid.SetColumn(toggleButton, 3);
             addProfileButton.Click += async (_, _) => await AddProfileAsync(game);
+
+            importProfileButton.Click += async (_, _) => await ProfileUtils.ImportProfileAsync(game, this);
 
             bool isCollapsed = false;
             toggleButton.Click += (_, _) =>
@@ -450,6 +479,7 @@ namespace Crescent.UI
 
             headerGrid.Children.Add(profileTitle);
             headerGrid.Children.Add(addProfileButton);
+            headerGrid.Children.Add(importProfileButton);
             headerGrid.Children.Add(toggleButton);
             return headerGrid;
         }
