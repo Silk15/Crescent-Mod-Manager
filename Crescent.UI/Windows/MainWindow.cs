@@ -124,7 +124,12 @@ namespace Crescent.UI
             if (libraryScrollViewer == null) return;
             libraryScrollViewer.Content = libraryPanel;
             Background = GetBackgroundGradient();
-            sidebarOverlay!.Children.Clear();
+            if (sidebarOverlay == null)
+            {
+                Logger.Warn("No sidebar to update :(");
+                return;
+            }
+            
             sidebarOverlay.IsVisible = false;
         }
 
@@ -159,7 +164,13 @@ namespace Crescent.UI
         private void OnGameClicked(GameData game)
         {
             selectedGame = game;
-            sidebarOverlay!.IsVisible = true;
+            if (sidebarOverlay == null)
+            {
+                Logger.Warn("No sidebar to update :(");
+                return;
+            }
+            
+            sidebarOverlay.IsVisible = true;
             sidebarOverlay.ShowGameSidebar(game);
             sidebarOverlay.OpenTab<ModsTab>();
         }

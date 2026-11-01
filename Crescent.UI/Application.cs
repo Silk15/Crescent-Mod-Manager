@@ -127,69 +127,37 @@ namespace Crescent.UI
                 });
             };
 
-            void ExitApplication()
-            {
-                foreach (GameData configuredGame in GameData.InstalledGames)
-                {
-                    try
-                    {
-                        configuredGame.Unload();
-                        for (int index = 0; index < configuredGame.installedMods.Count; index++)
-                            configuredGame.OnModUnloaded(configuredGame.installedMods[index]);
-                    }
-                    catch (Exception exception)
-                    {
-                        Logger.Error(exception.ToString());
-                    }
-                }
-
-                Environment.Exit(0);
-            }
-
             mainWindow.Closing += (sender, args) =>
             {
                 args.Cancel = true;
                 mainWindow.Hide();
             };
 
-            TrayIcon trayIcon = new()
-            {
-                ToolTipText = MainWindow.TitleText,
-                Icon = mainWindow.Icon,
-                Menu = new NativeMenu()
-            };
-
-            NativeMenuItem openItem = new("Open");
-            openItem.Click += (s, e) =>
-            {
-                mainWindow.Show();
-                mainWindow.WindowState = WindowState.Normal;
-                mainWindow.Activate();
-            };
-
-            NativeMenuItem exitItem = new("Exit");
-            exitItem.Click += (s, e) => ExitApplication();
-
-            trayIcon.Menu.Items.Add(openItem);
-            trayIcon.Menu.Items.Add(exitItem);
-
-            trayIcon.Clicked += (s, e) =>
-            {
-                if (mainWindow.IsVisible) mainWindow.Hide();
-                else
-                {
-                    mainWindow.Show();
-                    mainWindow.WindowState = WindowState.Normal;
-                    mainWindow.Activate();
-                }
-            };
-
             TrayIcon.SetIcons(this, new TrayIcons
             {
-                trayIcon
+                TaskbarContextMenu.Get(mainWindow)
             });
             
             mainWindow.Show();
+        }
+        
+        public static void ExitApplication()
+        {
+            foreach (GameData configuredGame in GameData.InstalledGames)
+            {
+                try
+                {
+                    configuredGame.Unload();
+                    for (int index = 0; index < configuredGame.installedMods.Count; index++)
+                        configuredGame.OnModUnloaded(configuredGame.installedMods[index]);
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception.ToString());
+                }
+            }
+
+            Environment.Exit(0);
         }
     }
 }

@@ -62,7 +62,6 @@ namespace Crescent.Utilities
 
         public static void TryOpen(this string value)
         {
-            if (!File.Exists(value) || !Directory.Exists(value)) return;
             Process.Start(new ProcessStartInfo(value)
             {
                 UseShellExecute = true

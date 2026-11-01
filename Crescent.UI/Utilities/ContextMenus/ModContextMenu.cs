@@ -11,8 +11,7 @@ namespace Crescent.UI
         public static ContextMenu Get(GameData gameData, ModData modData, ModsTab modsTab)
         {
             ContextMenu contextMenu = new();
-            contextMenu.Padding = new Thickness(10, 0, 10, 0);
-            contextMenu.Background = Colors.MainPanelEnd;
+            contextMenu.Background = Colors.MainGradient;
             contextMenu.CornerRadius = new(8);
             contextMenu.ClipToBounds = true;
 
@@ -25,6 +24,7 @@ namespace Crescent.UI
             });
 
             contextMenu.Items.Add(GetUpdateButton(gameData, modData, modsTab));
+            contextMenu.Items.Add(GetCheckButton(gameData, modData, modsTab));
             contextMenu.Items.Add(new Separator
             {
                 Background = Colors.Separator,
@@ -49,7 +49,9 @@ namespace Crescent.UI
         {
             MenuItem nexusMenuItem = new()
             {
-                Header = "Open Nexus"
+                Header = "Open Nexus",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 5, 10, 0)
             };
             nexusMenuItem.Click += (_, _) => modData.url.nexusUrl.TryOpen();
             return nexusMenuItem;
@@ -59,7 +61,9 @@ namespace Crescent.UI
         { 
             MenuItem openFolderMenuItem = new()
             {
-                Header = "Open Folder"
+                Header = "Open Folder",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
             };
             
             openFolderMenuItem.Click += (_, _) => modData.filePath.TryOpen();
@@ -70,7 +74,9 @@ namespace Crescent.UI
         {
             MenuItem profileMenu = new()
             {
-                Header = "Profiles"
+                Header = "Profiles",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
             };
 
             List<ProfileData> allProfiles = gameData.Profiles;
@@ -81,7 +87,8 @@ namespace Crescent.UI
                 MenuItem profileItem = new()
                 {
                     Header = $"{profile.name} {(isEnabledInProfile ? " (Enabled)" : " (Disabled)")}",
-                    Foreground = isEnabledInProfile ? Brushes.LightGreen : Brushes.IndianRed
+                    Foreground = isEnabledInProfile ? Brushes.LightGreen : Brushes.IndianRed,
+                    CornerRadius = new CornerRadius(8)
                 };
 
                 profileItem.Click += async (_, _) =>
@@ -93,6 +100,7 @@ namespace Crescent.UI
                 };
                 
                 profileMenu.Items.Add(profileItem);
+                profileItem.Margin = new(10, i == 0 ? 5 : 0, 10, i == allProfiles.Count - 1 ? 5 : 0);
             }
             
             return profileMenu;
@@ -100,14 +108,16 @@ namespace Crescent.UI
 
         public static MenuItem GetUpdateButton(GameData gameData, ModData modData, ModsTab modsTab)
         {
-            MenuItem checkUpdateItem = new()
+            MenuItem updateButton = new()
             {
-                Header = modData.UpdateAvailable ? "Update" : "Check for Update"
+                Header = "Update",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
             };
 
-            checkUpdateItem.Click += async (_, _) =>
+            RenderedMod? renderedMod = modsTab.renderedMods.Find(item => item.modData == modData);
+            updateButton.Click += async (_, _) =>
             {
-                RenderedMod? renderedMod = modsTab.renderedMods.Find(item => item.modData == modData);
                 if (modData.UpdateAvailable)
                 {
                     try
@@ -128,21 +138,37 @@ namespace Crescent.UI
                         Logger.Error(exception.ToString());
                     }
                 }
-                else
-                {
-                    await modData.CheckForUpdateAsync(gameData.NexusName);
-                    if (renderedMod != null) renderedMod.RefreshMod();
-                }
             };
             
-            return checkUpdateItem;
+            return updateButton;
+        }
+
+        public static MenuItem GetCheckButton(GameData gameData, ModData modData, ModsTab modsTab)
+        {
+            MenuItem checkButton = new()
+            {
+                Header = "Check",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
+            };
+
+            RenderedMod? renderedMod = modsTab.renderedMods.Find(item => item.modData == modData);
+            checkButton.Click += async (_, _) =>
+            {
+                await modData.CheckForUpdateAsync(gameData.NexusName);
+                if (renderedMod != null) renderedMod.RefreshMod();
+            };
+            
+            return checkButton;
         }
 
         public static MenuItem? GetRenameButton(GameData gameData, ModData modData, ModsTab modsTab)
         {
             MenuItem renameButton = new()
             {
-                Header = "Rename"
+                Header = "Rename",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
             };
             
             renameButton.Click += async (_, _) =>
@@ -170,7 +196,9 @@ namespace Crescent.UI
         {
             MenuItem deleteButton = new()
             {
-                Header = "Delete"
+                Header = "Delete",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 5)
             };
             
             deleteButton.Click += async (_, _) =>

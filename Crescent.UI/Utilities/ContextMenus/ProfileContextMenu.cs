@@ -11,8 +11,7 @@ namespace Crescent.UI
         public static ContextMenu Get(GameData gameData, ProfileData profileData, SidebarOverlay sidebarOverlay)
         {
             ContextMenu contextMenu = new();
-            contextMenu.Padding = new Thickness(10, 0, 10, 0);
-            contextMenu.Background = Colors.MainPanelEnd;
+            contextMenu.Background = Colors.MainGradient;
             contextMenu.CornerRadius = new(8);
             contextMenu.ClipToBounds = true;
 
@@ -46,7 +45,9 @@ namespace Crescent.UI
             
             MenuItem addButton = new()
             {
-                Header = "Add All Installed Mods"
+                Header = "Add All Installed Mods",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 5, 10, 0)
             };
 
             addButton.Click += async (_, _) =>
@@ -75,7 +76,9 @@ namespace Crescent.UI
             
             MenuItem importButton = new()
             {
-                Header = "Import Profile"
+                Header = "Import Profile",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
             };
 
             importButton.Click += async (_, _) =>
@@ -93,7 +96,9 @@ namespace Crescent.UI
             
             MenuItem exportButton = new()
             {
-                Header = "Export Profile"
+                Header = "Export Profile",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
             };
 
             exportButton.Click += async (_, _) =>
@@ -146,7 +151,9 @@ namespace Crescent.UI
             
             MenuItem renameButton = new()
             {
-                Header = "Rename"
+                Header = "Rename",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 0)
             };
 
             renameButton.Click += async (_, _) =>
@@ -186,7 +193,9 @@ namespace Crescent.UI
 
             MenuItem deleteButton = new()
             {
-                Header = "Delete"
+                Header = "Delete",
+                CornerRadius = new CornerRadius(8),
+                Margin = new(10, 0, 10, 5)
             };
 
             deleteButton.Click += async (_, _) =>
