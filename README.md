@@ -18,4 +18,4 @@ And that's it. When you start Crescent you'll be able to set staging and executa
 
 
 <img width="1495" height="931" alt="Screenshot 2026-11-01 220946" src="https://github.com/user-attachments/assets/cf14e344-d8eb-4d56-9d14-aa6e898ffd09" />
-
+-# Note, install process is kinda iffy at the moment. I'll set up an installer for everything eventually maybe (or not)
