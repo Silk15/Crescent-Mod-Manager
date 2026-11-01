@@ -22,8 +22,8 @@ And that's it. When you start Crescent you'll be able to set staging and executa
 
 
 > *Parts of this project were written with AI, such as:*
-> - the **base** of the UI
-> - Nexus API requests
-> - Agood chunk of the file deployment.
+> - *The **base** of the UI*
+> - *Nexus API requests*
+> - *A good chunk of the file deployment.*
 
-> However that code has been majorly refactored to actually work with my project and be extensible. Both in the way I want and literally. However I refuse to ever entirely vibe code something or paste code in, especially not without extensively checking it.*
+> *However that code has been majorly refactored to actually work with my project and be extensible. Both in the way I want and literally. However I refuse to ever entirely vibe code something or paste code in, especially not without extensively checking it.*
