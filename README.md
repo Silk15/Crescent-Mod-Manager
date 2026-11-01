@@ -1,9 +1,11 @@
-## Crescent Mod Manager
+<img width="1732" height="300" alt="UI" src="https://github.com/user-attachments/assets/2d7e00f3-b13f-4933-9cad-b02610c539d6" />
+
+# Crescent Mod Manager
 A lightweight mod manager capable of working with (almost) any game on Nexus Mods. Currently supports:
 - [Stardew Valley](https://www.nexusmods.com/games/stardewvalley)
 - [Cyberpunk 2077](https://www.nexusmods.com/games/cyberpunk2077)
 
-# Install
+## Install
 - Crescent uses Windows Symlinks to create "pointers" to mod files and assets. Please enable the setting below before continuing:
   - Open the Windows Settings app.
   - Navigate to `System\Advanced` and scroll down to `For Developers`
@@ -13,3 +15,6 @@ A lightweight mod manager capable of working with (almost) any game on Nexus Mod
   - Navigate to `Crescent Mod Manager\Managed` and scroll until you see the `.exe`
  
 And that's it. When you start Crescent you'll be able to set staging and executable paths like any other mod manager, as well as import profiles.
+
+<img width="1495" height="931" alt="Screenshot 2026-11-01 220946" src="https://github.com/user-attachments/assets/cf14e344-d8eb-4d56-9d14-aa6e898ffd09" />
+
