@@ -11,6 +11,7 @@ A lightweight mod manager capable of working with (almost) any game on Nexus Mod
   - Open the Windows Settings app.
   - Navigate to `System\Advanced` and scroll down to `For Developers`
   - Turn **Developer Mode** on and accept the prompt
+  
 - Download the latest release [here](https://github.com/Silk15/Crescent-Mod-Manager/releases/tag/MainFiles) and extract it somewhere on your PC.
   - Navigate to `Crescent Mod Manager\Plugins` and install your required games from [here](https://github.com/Silk15/Crescent-Mod-Manager/tree/plugins)
   - Navigate to `Crescent Mod Manager\Managed` and scroll until you see the `.exe`
