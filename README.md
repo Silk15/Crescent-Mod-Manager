@@ -16,5 +16,6 @@ A lightweight mod manager capable of working with (almost) any game on Nexus Mod
  
 And that's it. When you start Crescent you'll be able to set staging and executable paths like any other mod manager, as well as import profiles.
 
+
 <img width="1495" height="931" alt="Screenshot 2026-11-01 220946" src="https://github.com/user-attachments/assets/cf14e344-d8eb-4d56-9d14-aa6e898ffd09" />
 
