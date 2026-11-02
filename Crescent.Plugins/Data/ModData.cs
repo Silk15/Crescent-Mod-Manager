@@ -174,15 +174,14 @@ namespace Crescent.Plugins
                 Directory.Delete(filePath, true);
                 if (isManual)
                 {
-                    string manualPath = Path.Combine(stagingPath, GameData.Manual);
                     for (int extension = 0; extension < possibleExtensions.Length; extension++)
                     {
-                        string path = Path.Combine(manualPath, filePath + possibleExtensions[extension]);
-                        if (File.Exists(path))
+                        string manualFilePath = filePath + possibleExtensions[extension];
+                        if (File.Exists(manualFilePath))
                         {
-                            string manualArchiveName = Path.GetFileName(path);
+                            string manualArchiveName = Path.GetFileName(manualFilePath);
                             Logger.Log($"  Deleted manual archive: {manualArchiveName}");
-                            File.Delete(path);
+                            File.Delete(manualFilePath);
                         }
                     }
                 }

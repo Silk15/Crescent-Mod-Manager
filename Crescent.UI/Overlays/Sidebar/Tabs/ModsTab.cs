@@ -384,10 +384,7 @@ namespace Crescent.UI
                     checkUpdatesButton.IsEnabled = false;
                     checkUpdatesButton.Content = "Checking...";
                     int count = 0;
-
-                    SidebarOverlay.deployButton!.IsEnabled = false;
-                    SidebarOverlay.withdrawButton!.IsEnabled = false;
-
+                    
                     foreach (ModData modData in gameData!.installedMods)
                     {
                         count = count % 3 + 1;

@@ -18,7 +18,7 @@ namespace Crescent.UI
             this.conflicts = conflicts;
             Title = "Mod File Conflicts";
             Width = 600;
-            Height = 350;
+            SizeToContent = SizeToContent.Height;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Background = Colors.MainGradient;
             CanResize = false;
@@ -55,7 +55,7 @@ namespace Crescent.UI
             Content = mainPanel;
         }
 
-        public StackPanel GetConflictsScroll()
+        public ScrollViewer GetConflictsScroll()
         {
             StackPanel conflictListStack = new()
             {
@@ -118,8 +118,7 @@ namespace Crescent.UI
                 conflictListStack.Children.Add(conflictBorder);
             }
 
-            conflictScrollViewer.Content = conflictListStack;
-            return conflictListStack;
+            return conflictScrollViewer;
         }
 
         public StackPanel GetButtonPanel()

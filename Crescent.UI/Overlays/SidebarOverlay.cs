@@ -20,8 +20,8 @@ namespace Crescent.UI
         };
         
         public static ProgressBar? deploymentProgressBar;
-        public static CrescentButton? deployButton;
-        public static CrescentButton? withdrawButton;
+        private static CrescentButton? deployButton;
+        private static CrescentButton? withdrawButton;
 
         public OverlaySeparator overlaySeparator;
         public StackPanel contentPanel;
