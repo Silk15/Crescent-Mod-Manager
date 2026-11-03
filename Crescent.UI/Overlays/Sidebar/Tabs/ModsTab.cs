@@ -177,7 +177,6 @@ namespace Crescent.UI
                     string unzippedName = Path.GetFileNameWithoutExtension(mod.modName);
                     if (validModNames.Contains(unzippedName))
                     {
-                        mod.modName = unzippedName;
                         return false;
                     }
 
@@ -199,7 +198,7 @@ namespace Crescent.UI
 
                         string modName = Path.GetFileName(filePath);
                         string name = Directory.Exists(filePath) ? modName : Path.GetFileNameWithoutExtension(filePath);
-                        ModData? modData = gameData.installedMods.Find(mod => mod.modName == modName);
+                        ModData? modData = gameData.installedMods.Find(mod => string.Equals(mod.modName, modName, StringComparison.OrdinalIgnoreCase) || string.Equals(Path.GetFileNameWithoutExtension(mod.modName), modName, StringComparison.OrdinalIgnoreCase));
 
                         if (modData == null)
                         {
