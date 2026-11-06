@@ -22,7 +22,7 @@ And that's it. When you start Crescent you'll be able to set staging and executa
 <img width="1495" height="931" alt="Screenshot 2026-11-01 220946" src="https://github.com/user-attachments/assets/cf14e344-d8eb-4d56-9d14-aa6e898ffd09" />
 
 
-> *Parts of this project were written with AI, such as:*
+> *Parts of this project were written with AI and/or AI Assistance, such as:*
 > - *The **base** of the UI*
 > - *Nexus API requests*
 > - *A good chunk of the file deployment.*
