@@ -20,6 +20,7 @@ And that's it. When you start Crescent you'll be able to set staging and executa
 
 
 <img width="1495" height="931" alt="Screenshot 2026-11-01 220946" src="https://github.com/user-attachments/assets/cf14e344-d8eb-4d56-9d14-aa6e898ffd09" />
+<img width="1915" height="1079" alt="image" src="https://github.com/user-attachments/assets/c13266f3-e74a-46f4-8276-0511d919b643" />
 
 
 > *Parts of this project were written with AI and/or AI Assistance, such as:*
