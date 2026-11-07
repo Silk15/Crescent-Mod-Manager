@@ -9,7 +9,7 @@ namespace Crescent.UI
         public int Order { get; }
         
         public CrescentButton GetButton();
-        public void OnLoaded(SidebarOverlay sidebarOverlay, GameData gameData);
+        public void OnLoaded(SidebarOverlay sidebarOverlay, PluginData pluginData);
         public void OnClick();
     }
 }

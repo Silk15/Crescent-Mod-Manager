@@ -1,20 +1,18 @@
 using System.Diagnostics;
-using System.Text;
-using Crescent.Utilities;
 using Crescent.Json.Serialization;
 using Newtonsoft.Json;
 
 namespace Crescent.Plugins
 {
     [Serializable]
-    public abstract class GameData
+    public abstract class PluginData
     {
         public const string Default = "Default";
         public const string Managed = "Managed";
         public const string Archive = "Archive";
         public const string Manual = "Manual";
         
-        public static List<GameData> InstalledGames { get; set; } = new();
+        public static List<PluginData> InstalledPlugins { get; set; } = new();
         
         [JsonProperty(Order = 8)] 
         public List<ModData> installedMods = new();
@@ -25,8 +23,15 @@ namespace Crescent.Plugins
         [JsonProperty(Order = 5)] public DeploymentState deploymentState = DeploymentState.NotDeployed;
         [JsonProperty(Order = 4)] public string deploymentStatus = "Not deployed";
         [JsonProperty(Order = 9)] public long playTime;
+        [JsonProperty(Order = 4)] public bool isEnabled;
+
+        [NonSerialized]
+        public string version;
+
+        [NonSerialized]
+        public string folderName;
         
-        public event Action<GameData> onDeploymentStatusChanged;
+        public event Action<PluginData> onDeploymentStatusChanged;
 
         [JsonProperty(Order = 0)] public abstract string DeploymentPath { get; set; }
         [JsonProperty(Order = 1)] public abstract string StagingPath { get; set; }
@@ -34,26 +39,16 @@ namespace Crescent.Plugins
 
         [JsonIgnore] public DeploymentState DeploymentState => deploymentState == DeploymentState.NotDeployed && installedMods.Any(modData => modData.isDeployed) ? installedMods.Any(modData => SelectedProfile.IsModEnabled(modData) && !modData.isDeployed) ? DeploymentState.PartiallyDeployed : DeploymentState.Deployed : deploymentState;
         [JsonIgnore] public string DeploymentStatus => deploymentStatus == "Not deployed" && installedMods.Any(modData => modData.isDeployed) ? "Deployed mods restored from configuration" : deploymentStatus;
-
-        #region Game Data
         
         [JsonIgnore] public abstract string Name { get; }
-        [JsonIgnore] public abstract string GameLogo { get; }
-        [JsonIgnore] public abstract string Banner { get; }
-        [JsonIgnore] public abstract string Theme { get; }
 
         [JsonIgnore] public virtual int ModCount => SelectedProfile?.mods.Count ?? 0;
-        [JsonIgnore] public string AssemblyName => GetType().Assembly.GetName().Name!;
-        [JsonIgnore] public abstract Type LogFileType { get; }
-        
-        [JsonIgnore] public abstract string NexusName { get; }
-        [JsonIgnore] public virtual string BaseUrl => $"https://www.nexusmods.com/{NexusName}/mods/";
         
         [JsonIgnore] public ProfileData SelectedProfile
         {
             get
             {
-                ProfileData foundProfile = profiles.Find(profileData => string.Equals(profileData.name, selectedProfileName, StringComparison.OrdinalIgnoreCase));
+                ProfileData? foundProfile = profiles.Find(profileData => string.Equals(profileData.name, selectedProfileName, StringComparison.OrdinalIgnoreCase));
                 if (foundProfile == null)
                 {
                     for (int index = 0; index < profiles.Count; index++)
@@ -81,8 +76,9 @@ namespace Crescent.Plugins
             }
         }
         
-        #endregion
-
+        [JsonIgnore] public abstract Theme Theme { get; }
+        [JsonIgnore] public abstract API API { get; }
+        
         #region Window Functions
         
         public static Func<int, int, string, string, Task>? OnProgressWindowUpdate { get; set; }
@@ -157,7 +153,7 @@ namespace Crescent.Plugins
 
         public virtual void OnModLoaded(ModData modData)
         {
-            ProfileData defaultProfile = Profiles.Find(profileData => string.Equals(profileData.name, "Default", StringComparison.OrdinalIgnoreCase));
+            ProfileData? defaultProfile = Profiles.Find(profileData => string.Equals(profileData.name, "Default", StringComparison.OrdinalIgnoreCase));
             if (defaultProfile != null && !defaultProfile.IsModInstalled(modData)) defaultProfile.SetModEnabled(modData, true);
         }
 
@@ -239,30 +235,5 @@ namespace Crescent.Plugins
         public virtual bool IsCoreMod(ModData modData) => false;
         
         #endregion
-        
-        public override string ToString()
-        {
-            StringBuilder stringBuilder = new();
-            stringBuilder.AppendLine("Crescent Mod Manager [Game Export]");
-            stringBuilder.AppendLine($"{Name} [profile: {SelectedProfile.name}] [mods: {ModCount}] [state: {DeploymentState}]");
-            foreach (ModData modData in installedMods)
-            {
-                stringBuilder.AppendLine($"- [{modData.DisplayName.WithoutNumbers().Replace(" ", "")}] [v{modData.version}]");
-                stringBuilder.AppendLine("  - File Data");
-                stringBuilder.AppendLine($"    Update: [{modData.UpdateAvailable}]");
-                stringBuilder.AppendLine($"    Latest: [v{modData.LatestVersion}]");
-                stringBuilder.AppendLine("  - State");
-                stringBuilder.AppendLine($"    Deployed: [{modData.isDeployed}]");
-                stringBuilder.AppendLine($"    Symlinked: [{!modData.isManual}]");
-                stringBuilder.AppendLine("  - Profiles");
-                foreach (ProfileData profileData in Profiles)
-                {
-                    if (profileData.IsModInstalled(modData)) 
-                        stringBuilder.AppendLine($"    [in: {profileData.name}] ({(profileData.IsModEnabled(modData) ? "enabled" : "disabled")})");
-                }
-            }
-    
-            return stringBuilder.ToString();
-        }
     }
 }

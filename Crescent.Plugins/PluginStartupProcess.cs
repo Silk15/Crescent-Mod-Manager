@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Text;
 using Crescent.Utilities;
 
 namespace Crescent.Plugins;
@@ -21,18 +20,21 @@ public class PluginStartupProcess : IStartupProcess
         for (int i = 0; i < directories.Length; i++)
         {
             string directory = directories[i];
-            try
-            {
-                string split = directory.Split("\\").Last();
-                string assemblyPath = directory + $"\\{split}.dll";
+            string split = directory.Split("\\").Last();
+            Logger.Log($"   - {split}", false);
 
-                Logger.Log($"   - {split}", false);
-                Assembly assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
-                allTasks.Add(new LoadPluginTask(assembly));
-            }
-            catch (Exception ex)
+            foreach (string assemblyPath in Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly))
             {
-                Logger.Error(ex.ToString());
+                Logger.Log($"Loading {assemblyPath}");
+                try
+                {
+                    Assembly assembly = AssemblyLoadContext.Default.LoadFromAssemblyPath(assemblyPath);
+                    allTasks.Add(new LoadPluginTask(assembly, directory));
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex.ToString());
+                }
             }
         }
 

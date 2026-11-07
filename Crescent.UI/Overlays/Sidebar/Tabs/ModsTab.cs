@@ -18,7 +18,7 @@ namespace Crescent.UI
             "Manual"
         };
         
-        public GameData? gameData;
+        public PluginData? gameData;
         public SidebarOverlay? sidebarOverlay;
         public List<RenderedMod> renderedMods = new();
         
@@ -35,9 +35,9 @@ namespace Crescent.UI
             Padding = new Thickness(10, 8)
         };
 
-        public void OnLoaded(SidebarOverlay sidebarOverlay, GameData gameData)
+        public void OnLoaded(SidebarOverlay sidebarOverlay, PluginData pluginData)
         {
-            this.gameData = gameData;
+            this.gameData = pluginData;
             this.sidebarOverlay = sidebarOverlay;
             Setup();
         }
@@ -175,17 +175,14 @@ namespace Crescent.UI
                 {
                     if (validModNames.Contains(mod.modName)) return false;
                     string unzippedName = Path.GetFileNameWithoutExtension(mod.modName);
-                    if (validModNames.Contains(unzippedName))
-                    {
-                        return false;
-                    }
+                    if (validModNames.Contains(unzippedName)) return false;
 
                     return true;
                 });
 
                 string filterText = searchBox.Text != null ? searchBox.Text.ToLower() : "";
                 string selectedFilter = filterComboBox.SelectedItem as string ?? "All";
-                bool isDefaultProfile = string.Equals(gameData.selectedProfileName, GameData.Default, StringComparison.OrdinalIgnoreCase);
+                bool isDefaultProfile = string.Equals(gameData.selectedProfileName, PluginData.Default, StringComparison.OrdinalIgnoreCase);
 
                 List<ModData> modsToCheck = new();
                 List<RenderedMod> tempRenderedMods = new();
@@ -261,7 +258,7 @@ namespace Crescent.UI
                             ModData mod = modsToCheck[i];
                             try
                             {
-                                await mod.CheckForUpdateAsync(gameData.NexusName);
+                                await mod.CheckForUpdateAsync(gameData.API.Name);
                                 await Dispatcher.UIThread.InvokeAsync(() =>
                                 {
                                     RenderedMod? renderedMod = renderedMods.Find(item => item.modData == mod);
@@ -390,7 +387,7 @@ namespace Crescent.UI
                         checkUpdatesButton.Content = "Checking" + new string('.', count);
 
                         modData.HasCheckedForUpdate = false;
-                        await modData.CheckForUpdateAsync(gameData.NexusName);
+                        await modData.CheckForUpdateAsync(gameData.API.Name);
                         await Task.Delay(350);
                     }
 

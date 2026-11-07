@@ -64,6 +64,30 @@ namespace Crescent.APIs.NexusMods
             return JObject.Parse(jsonString);
         }
 
+        public static async Task<List<string>> GetRequirementIdsAsync(string gameDomain, string nexusId)
+        {
+            List<string> requirementIds = new();
+            if (string.IsNullOrEmpty(nexusId) || string.IsNullOrEmpty(gameDomain)) return requirementIds;
+
+            JObject? modDetails = await GetModDetailsJsonAsync(gameDomain, nexusId);
+            if (modDetails == null) return requirementIds;
+
+            string descriptionHtml = modDetails["description"]?.ToString() ?? string.Empty;
+            MatchCollection linkMatches = Regex.Matches(descriptionHtml, @"nexusmods\.com/[^/]+/mods/(\d+)", RegexOptions.IgnoreCase);
+
+            for (int i = 0; i < linkMatches.Count; i++)
+            {
+                Match linkMatch = linkMatches[i];
+                if (linkMatch.Groups.Count > 1)
+                {
+                    string reqId = linkMatch.Groups[1].Value;
+                    if (!string.Equals(reqId, nexusId, StringComparison.OrdinalIgnoreCase) && !requirementIds.Contains(reqId)) requirementIds.Add(reqId);
+                }
+            }
+
+            return requirementIds;
+        }
+
         #endregion
 
         #region File Management
@@ -75,7 +99,7 @@ namespace Crescent.APIs.NexusMods
             {
                 HttpClient downloadClient = new();
                 HttpResponseMessage response = await downloadClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
-                
+
                 if (!response.IsSuccessStatusCode) return null;
                 string fileName = response.Content.Headers.ContentDisposition?.FileName?.Trim('"') ?? string.Empty;
                 if (string.IsNullOrEmpty(fileName))
@@ -96,13 +120,13 @@ namespace Crescent.APIs.NexusMods
                         _ => string.Empty
                     };
 
-                    if (!string.IsNullOrEmpty(extension)) 
+                    if (!string.IsNullOrEmpty(extension))
                         fileName = Path.ChangeExtension(fileName, extension);
                 }
 
                 if (!Directory.Exists(destinationDirectory)) Directory.CreateDirectory(destinationDirectory);
                 string destinationPath = Path.Combine(destinationDirectory, fileName);
-                
+
                 Stream contentStream = await response.Content.ReadAsStreamAsync();
                 FileStream fileStream = new(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true);
                 await contentStream.CopyToAsync(fileStream);
@@ -122,7 +146,7 @@ namespace Crescent.APIs.NexusMods
         #endregion
 
         #region Formatting
-        
+
         public static string TryCleanVersion(string version)
         {
             if (string.IsNullOrEmpty(version)) return string.Empty;

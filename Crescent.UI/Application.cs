@@ -46,7 +46,7 @@ namespace Crescent.UI
             desktop.MainWindow = mainWindow;
 
             ProgressDialog? activeProgressWindow = null;
-            GameData.OnOverlapConfirm = async (title, message) =>
+            PluginData.OnOverlapConfirm = async (title, message) =>
             {
                 string inputResult = string.Empty;
                 await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -61,7 +61,7 @@ namespace Crescent.UI
                 return inputResult;
             };
 
-            GameData.OnConflictResolve = async conflicts =>
+            PluginData.OnConflictResolve = async conflicts =>
             {
                 bool resolutionResult = false;
                 await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -76,7 +76,7 @@ namespace Crescent.UI
                 return resolutionResult;
             };
 
-            GameData.OnProgressWindowOpen = async () =>
+            PluginData.OnProgressWindowOpen = async () =>
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -92,7 +92,7 @@ namespace Crescent.UI
                 });
             };
 
-            GameData.OnProgressWindowUpdate = async (int processedFiles, int totalFiles, string modName, string targetFile) =>
+            PluginData.OnProgressWindowUpdate = async (int processedFiles, int totalFiles, string modName, string targetFile) =>
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -108,7 +108,7 @@ namespace Crescent.UI
                 }, DispatcherPriority.Background);
             };
 
-            GameData.OnProgressWindowClose = async () =>
+            PluginData.OnProgressWindowClose = async () =>
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -143,7 +143,7 @@ namespace Crescent.UI
         
         public static void ExitApplication()
         {
-            foreach (GameData configuredGame in GameData.InstalledGames)
+            foreach (PluginData configuredGame in PluginData.InstalledPlugins)
             {
                 try
                 {

@@ -8,7 +8,7 @@ namespace Crescent.UI
 {
     public class ProfileUtils
     {
-        public static async Task ImportProfileAsync(GameData gameData, SidebarOverlay sidebarOverlay)
+        public static async Task ImportProfileAsync(PluginData pluginData, SidebarOverlay sidebarOverlay)
         {
             ModsTab modsTab = sidebarOverlay.GetTab<ModsTab>()!;
             try
@@ -34,24 +34,24 @@ namespace Crescent.UI
                     
                     string path = files[0].Path.LocalPath;
                     ExportedProfile exportedProfile = await FileManager.ReadJson<ExportedProfile>(path);
-                    if (!string.Equals(exportedProfile.gameName, gameData.Name, StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(exportedProfile.gameName, pluginData.Name, StringComparison.OrdinalIgnoreCase))
                     {
-                        ConfirmationDialog errorDialog = new("Invalid Game", $"This profile belongs to \"{exportedProfile.gameName}\" but the current game is \"{gameData.Name}\"", false);
+                        ConfirmationDialog errorDialog = new("Invalid Game", $"This profile belongs to \"{exportedProfile.gameName}\" but the current game is \"{pluginData.Name}\"", false);
                         await errorDialog.ShowDialog(parentWindow);
                         return;
                     }
                     
-                    ProfileData? targetProfile = gameData.profiles.Find(p => string.Equals(p.name, exportedProfile.profileName, StringComparison.OrdinalIgnoreCase));
+                    ProfileData? targetProfile = pluginData.profiles.Find(p => string.Equals(p.name, exportedProfile.profileName, StringComparison.OrdinalIgnoreCase));
                     if (targetProfile == null)
                     {
                         targetProfile = new ProfileData { name = exportedProfile.profileName };
-                        gameData.profiles.Add(targetProfile);
+                        pluginData.profiles.Add(targetProfile);
                     }
 
-                    gameData.selectedProfileName = targetProfile.name;
-                    await gameData.SaveAsync();
+                    pluginData.selectedProfileName = targetProfile.name;
+                    await pluginData.SaveAsync();
 
-                    ProfileImportDialog importDialog = new(gameData, exportedProfile, targetProfile);
+                    ProfileImportDialog importDialog = new(pluginData, exportedProfile, targetProfile);
                     await importDialog.ShowDialog(parentWindow);
 
                     if (importDialog.ImportSuccess)

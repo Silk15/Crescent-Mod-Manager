@@ -1,13 +1,14 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Crescent.Utilities
 {
     public static class Extensions
     {
         public static readonly List<char> BlacklistedCharacters = new()
-        { 
+        {
             '1',
             '2',
             '3',
@@ -28,7 +29,7 @@ namespace Crescent.Utilities
             ".rar",
             ".7z"
         };
-        
+
         public static string WithPlural(this int value) => value == 1 ? "" : "s";
 
         public static string WithoutNumbers(this string value)
@@ -39,7 +40,7 @@ namespace Crescent.Utilities
                 char character = value[i];
                 if (!BlacklistedCharacters.Contains(character)) stringBuilder.Append(character);
             }
-            
+
             return stringBuilder.ToString();
         }
 
@@ -48,17 +49,23 @@ namespace Crescent.Utilities
             value = value.Replace(" ", string.Empty);
             return value;
         }
+
+        public static string Cleaned(this string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            value = Regex.Replace(value, @"(?<=[a-z])([A-Z])", " $1");
+            value = Regex.Replace(value, @"\b(v?\d+(?:\.\d+)*)\b", string.Empty);
+            value = Regex.Replace(value, @"\b[eEkK]\b", string.Empty);
+            value = Regex.Replace(value, @"\s+", " ");
+            return value.Trim();
+        }
         
         public static bool IsArchive(this string fileName) => Archives.Any(a => fileName.EndsWith(a, StringComparison.OrdinalIgnoreCase));
-    
-        public static bool IsNativeBinary(this string fileName) => 
-            fileName.StartsWith("clr", StringComparison.OrdinalIgnoreCase) 
-            || fileName.StartsWith("host", StringComparison.OrdinalIgnoreCase) 
-            || fileName.Contains("native", StringComparison.OrdinalIgnoreCase) 
-            || fileName.Equals("msquic.dll", StringComparison.OrdinalIgnoreCase) 
-            || fileName.Equals("sni.dll", StringComparison.OrdinalIgnoreCase) 
-            || fileName.Equals("vcruntime140_app.dll", StringComparison.OrdinalIgnoreCase)
-            || !fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
+
+        public static bool IsNativeBinary(this string fileName) =>
+            fileName.StartsWith("clr", StringComparison.OrdinalIgnoreCase) || fileName.StartsWith("host", StringComparison.OrdinalIgnoreCase) || fileName.Contains("native", StringComparison.OrdinalIgnoreCase) || fileName.Equals("msquic.dll", StringComparison.OrdinalIgnoreCase) || fileName.Equals("sni.dll", StringComparison.OrdinalIgnoreCase) || fileName.Equals("vcruntime140_app.dll", StringComparison.OrdinalIgnoreCase) || !fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
 
         public static void TryOpen(this string value)
         {
@@ -71,7 +78,8 @@ namespace Crescent.Utilities
         public static bool AnyEquals(this IEnumerable<string> collection, string value)
         {
             foreach (string item in collection)
-                if (string.Equals(item, value, StringComparison.OrdinalIgnoreCase)) return true;
+                if (string.Equals(item, value, StringComparison.OrdinalIgnoreCase))
+                    return true;
             return false;
         }
 
@@ -84,7 +92,7 @@ namespace Crescent.Utilities
                     attribute = (T)customAttributes[i];
                     return true;
                 }
-            
+
             attribute = null;
             return false;
         }
@@ -101,7 +109,9 @@ namespace Crescent.Utilities
                     if (result is Task task) await task;
                     else if (result is ValueTask valueTask) await valueTask;
                 }
-                catch (Exception ex) { }
+                catch (Exception ex)
+                {
+                }
             }
         }
     }

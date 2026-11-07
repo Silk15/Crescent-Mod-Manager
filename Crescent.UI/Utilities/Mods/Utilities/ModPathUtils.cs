@@ -5,7 +5,7 @@ namespace Crescent.UI
 {
     public static class ModPathUtils
     {
-        public static List<string> GetModPaths(GameData game)
+        public static List<string> GetModPaths(PluginData plugin)
         {
             List<string> modPaths = new();
             bool HasExtractedCounterpart(string archivePath, string baseDirectory)
@@ -15,25 +15,25 @@ namespace Crescent.UI
                 return Directory.Exists(expectedDirPath);
             }
 
-            string[] rootFiles = Directory.GetFiles(game.StagingPath, "*.*", SearchOption.TopDirectoryOnly);
+            string[] rootFiles = Directory.GetFiles(plugin.StagingPath, "*.*", SearchOption.TopDirectoryOnly);
             foreach (string file in rootFiles)
             {
                 string extension = Path.GetExtension(file).ToLower();
                 if (extension.IsArchive())
                 {
-                    if (HasExtractedCounterpart(file, game.StagingPath)) continue;
+                    if (HasExtractedCounterpart(file, plugin.StagingPath)) continue;
                     modPaths.Add(file);
                 }
             }
 
-            string[] rootDirectories = Directory.GetDirectories(game.StagingPath, "*", SearchOption.TopDirectoryOnly);
+            string[] rootDirectories = Directory.GetDirectories(plugin.StagingPath, "*", SearchOption.TopDirectoryOnly);
             foreach (string directory in rootDirectories)
             {
                 string directoryName = Path.GetFileName(directory);
                 if (!ModsTab.PrivilegedFolders.AnyEquals(directoryName)) modPaths.Add(directory);
             }
 
-            string manualFolder = Path.Combine(game.StagingPath, GameData.Manual);
+            string manualFolder = Path.Combine(plugin.StagingPath, PluginData.Manual);
             if (Directory.Exists(manualFolder))
             {
                 string[] manualFiles = Directory.GetFiles(manualFolder, "*.*", SearchOption.TopDirectoryOnly);

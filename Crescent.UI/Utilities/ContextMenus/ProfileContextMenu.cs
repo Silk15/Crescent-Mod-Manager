@@ -8,22 +8,22 @@ namespace Crescent.UI
 {
     public static class ProfileContextMenu
     {
-        public static ContextMenu Get(GameData gameData, ProfileData profileData, SidebarOverlay sidebarOverlay)
+        public static ContextMenu Get(PluginData pluginData, ProfileData profileData, SidebarOverlay sidebarOverlay)
         {
             ContextMenu contextMenu = new();
             contextMenu.Background = Colors.MainGradient;
             contextMenu.CornerRadius = new(8);
             contextMenu.ClipToBounds = true;
 
-            contextMenu.Items.Add(GetAddButton(gameData, profileData, sidebarOverlay));
+            contextMenu.Items.Add(GetAddButton(pluginData, profileData, sidebarOverlay));
             contextMenu.Items.Add(new Separator
             {
                 Background = Colors.Separator,
                 Height = 1
             });
             
-            contextMenu.Items.Add(GetImportButton(gameData, sidebarOverlay));
-            contextMenu.Items.Add(GetExportButton(gameData, profileData, sidebarOverlay));
+            contextMenu.Items.Add(GetImportButton(pluginData, sidebarOverlay));
+            contextMenu.Items.Add(GetExportButton(pluginData, profileData, sidebarOverlay));
             
             contextMenu.Items.Add(new Separator
             {
@@ -31,14 +31,14 @@ namespace Crescent.UI
                 Height = 1
             });
             
-            contextMenu.Items.Add(GetRenameButton(gameData, profileData, sidebarOverlay));
-            contextMenu.Items.Add(GetDeleteButton(gameData, profileData, sidebarOverlay));
+            contextMenu.Items.Add(GetRenameButton(pluginData, profileData, sidebarOverlay));
+            contextMenu.Items.Add(GetDeleteButton(pluginData, profileData, sidebarOverlay));
             return contextMenu;
         }
 
         #region Buttons
 
-        public static MenuItem? GetAddButton(GameData gameData, ProfileData profileData, SidebarOverlay sidebarOverlay)
+        public static MenuItem? GetAddButton(PluginData pluginData, ProfileData profileData, SidebarOverlay sidebarOverlay)
         {
             ModsTab? modsTab = sidebarOverlay.GetTab<ModsTab>();
             if (modsTab == null) return null;
@@ -54,10 +54,10 @@ namespace Crescent.UI
             {
                 try
                 {
-                    foreach (ModData modData in gameData.installedMods) 
+                    foreach (ModData modData in pluginData.installedMods) 
                         profileData.SetModEnabled(modData, true);
                     
-                    await gameData.SaveAsync();
+                    await pluginData.SaveAsync();
                     modsTab.Refresh();
                 }
                 catch (Exception ex)
@@ -69,7 +69,7 @@ namespace Crescent.UI
             return addButton;
         }
 
-        public static MenuItem? GetImportButton(GameData gameData, SidebarOverlay sidebarOverlay)
+        public static MenuItem? GetImportButton(PluginData pluginData, SidebarOverlay sidebarOverlay)
         {
             ModsTab? modsTab = sidebarOverlay.GetTab<ModsTab>();
             if (modsTab == null) return null;
@@ -83,13 +83,13 @@ namespace Crescent.UI
 
             importButton.Click += async (_, _) =>
             {
-                await ProfileUtils.ImportProfileAsync(gameData, sidebarOverlay);
+                await ProfileUtils.ImportProfileAsync(pluginData, sidebarOverlay);
             };
             
             return importButton;
         }
 
-        public static MenuItem? GetExportButton(GameData gameData, ProfileData profileData, SidebarOverlay sidebarOverlay)
+        public static MenuItem? GetExportButton(PluginData pluginData, ProfileData profileData, SidebarOverlay sidebarOverlay)
         {
             ModsTab? modsTab = sidebarOverlay.GetTab<ModsTab>();
             if (modsTab == null) return null;
@@ -130,7 +130,7 @@ namespace Crescent.UI
                     if (file != null)
                     {
                         string path = file.Path.LocalPath;
-                        ExportedProfile exportedProfile = new(gameData, profileData);
+                        ExportedProfile exportedProfile = new(pluginData, profileData);
                         string json = JsonConvert.SerializeObject(exportedProfile, Formatting.Indented);
                         await File.WriteAllTextAsync(path, json);
                     }
@@ -144,7 +144,7 @@ namespace Crescent.UI
             return exportButton;
         }
         
-        public static MenuItem? GetRenameButton(GameData gameData, ProfileData profileData, SidebarOverlay sidebarOverlay)
+        public static MenuItem? GetRenameButton(PluginData pluginData, ProfileData profileData, SidebarOverlay sidebarOverlay)
         {
             ModsTab? modsTab = sidebarOverlay.GetTab<ModsTab>();
             if (modsTab == null) return null;
@@ -160,7 +160,7 @@ namespace Crescent.UI
             {
                 try
                 {
-                    string beforeName = gameData.selectedProfileName;
+                    string beforeName = pluginData.selectedProfileName;
                     Window? parentWindow = TopLevel.GetTopLevel(modsTab) as Window;
                     if (parentWindow != null)
                     {
@@ -172,8 +172,8 @@ namespace Crescent.UI
                             profileData.name = newName;
                     }
 
-                    gameData.selectedProfileName = beforeName == "Default" ? "Default" : profileData.name;
-                    await gameData.SaveAsync();
+                    pluginData.selectedProfileName = beforeName == "Default" ? "Default" : profileData.name;
+                    await pluginData.SaveAsync();
                     sidebarOverlay.RenderProfiles();
                     modsTab.Refresh();
                 }
@@ -186,7 +186,7 @@ namespace Crescent.UI
             return renameButton;
         }
 
-        public static MenuItem? GetDeleteButton(GameData game, ProfileData profile, SidebarOverlay sidebarOverlay)
+        public static MenuItem? GetDeleteButton(PluginData plugin, ProfileData profile, SidebarOverlay sidebarOverlay)
         {
             ModsTab? modsTab = sidebarOverlay.GetTab<ModsTab>();
             if (modsTab == null) return null;
@@ -202,10 +202,10 @@ namespace Crescent.UI
             {
                 try
                 {
-                    game.selectedProfileName = "Default";
-                    game.profiles.Remove(profile);
+                    plugin.selectedProfileName = "Default";
+                    plugin.profiles.Remove(profile);
                     
-                    await game.SaveAsync();
+                    await plugin.SaveAsync();
                     sidebarOverlay.RenderProfiles();
                     modsTab.Refresh();
                 }

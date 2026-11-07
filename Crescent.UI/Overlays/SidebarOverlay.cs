@@ -18,7 +18,7 @@ namespace Crescent.UI
             typeof(ModsTab),
             typeof(SettingsTab)
         };
-        
+
         public static ProgressBar? deploymentProgressBar;
         private static CrescentButton? deployButton;
         private static CrescentButton? withdrawButton;
@@ -27,7 +27,7 @@ namespace Crescent.UI
         public StackPanel contentPanel;
         public TextBlock? deploymentText;
         private Action? renderProfiles;
-        public GameData? currentGame;
+        public PluginData? currentGame;
 
         public List<ISidebarTab> sidebarTabs = new();
         public ISidebarTab? currentTab;
@@ -41,9 +41,9 @@ namespace Crescent.UI
                 overlaySeparator.IsVisible = value;
             }
         }
-        
-        public event Action<GameData>? onGameSelected;
-        public event Action<GameData, ISidebarTab>? onTabOpened;
+
+        public event Action<PluginData>? onGameSelected;
+        public event Action<PluginData, ISidebarTab>? onTabOpened;
 
         public SidebarOverlay()
         {
@@ -56,13 +56,13 @@ namespace Crescent.UI
 
             Children.Add(contentPanel);
         }
-        
+
         public void RenderProfiles() => renderProfiles?.Invoke();
-        
-        public void ShowGameSidebar(GameData game)
+
+        public void ShowGameSidebar(PluginData plugin)
         {
-            currentGame = game;
-            onGameSelected?.Invoke(game);
+            currentGame = plugin;
+            onGameSelected?.Invoke(plugin);
             contentPanel.Children.Clear();
 
             StackPanel sidebarLayoutPanel = new()
@@ -76,10 +76,10 @@ namespace Crescent.UI
             {
                 Children =
                 {
-                    GetBanner(game)
+                    GetBanner(plugin)
                 }
             });
-            
+
             sidebarLayoutPanel.Children.Add(GetModManagementPanel());
             Border statusBorder = new()
             {
@@ -87,29 +87,29 @@ namespace Crescent.UI
                 CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10, 8)
             };
-            
+
             statusBorder.Child = GetStatusPanel();
             sidebarLayoutPanel.Children.Add(statusBorder);
-            UpdateDeploymentStatus(game);
+            UpdateDeploymentStatus(plugin);
 
             TextBlock gameTitle = new()
             {
-                Text = game.Name,
+                Text = plugin.Name,
                 FontWeight = FontWeight.Bold,
-                
+
                 VerticalAlignment = VerticalAlignment.Center
             };
 
             sidebarLayoutPanel.Children.Add(gameTitle);
-            StackPanel verticalNavPanel = GetTabsPanel(game);
+            StackPanel verticalNavPanel = GetTabsPanel(plugin);
             sidebarLayoutPanel.Children.Add(verticalNavPanel);
 
-            StackPanel profileSectionPanel = GetProfileSectionPanel(game);
+            StackPanel profileSectionPanel = GetProfileSectionPanel(plugin);
             sidebarLayoutPanel.Children.Add(profileSectionPanel);
             contentPanel.Children.Add(sidebarLayoutPanel);
         }
-        
-        public Border GetBanner(GameData game)
+
+        public Border GetBanner(PluginData plugin)
         {
             Border bannerBorder = new()
             {
@@ -121,7 +121,7 @@ namespace Crescent.UI
             };
 
             Grid bannerGrid = new();
-            string bannerPath = Path.Combine(Runtime.PluginPath, game.AssemblyName, "Assets", game.Banner);
+            string bannerPath = Path.Combine(Runtime.PluginPath, plugin.folderName, "Assets", plugin.Theme.BannerName);
             if (File.Exists(bannerPath))
             {
                 Image image = new()
@@ -137,8 +137,8 @@ namespace Crescent.UI
         }
 
         #region Tabs
-        
-        public StackPanel GetTabsPanel(GameData gameData)
+
+        public StackPanel GetTabsPanel(PluginData pluginData)
         {
             sidebarTabs.Clear();
             StackPanel verticalNavPanel = new()
@@ -150,8 +150,8 @@ namespace Crescent.UI
             {
                 ISidebarTab? tab = Activator.CreateInstance(type) as ISidebarTab;
                 if (tab == null) continue;
-                
-                tab.OnLoaded(this, gameData);
+
+                tab.OnLoaded(this, pluginData);
                 sidebarTabs.Add(tab);
             }
 
@@ -161,7 +161,7 @@ namespace Crescent.UI
                 crescentButton.onClick += () => OpenTab(tab);
                 verticalNavPanel.Children.Add(crescentButton);
             }
-            
+
             return verticalNavPanel;
         }
 
@@ -170,7 +170,7 @@ namespace Crescent.UI
             if (currentGame == null || targetTab == null) return;
             currentTab = targetTab;
             targetTab.OnClick();
-            
+
             onTabOpened?.Invoke(currentGame, targetTab);
         }
 
@@ -182,11 +182,12 @@ namespace Crescent.UI
 
         public T? GetTab<T>() where T : ISidebarTab
         {
-            for (int i = 0; i < sidebarTabs.Count; i++) 
-                if (sidebarTabs[i] is T) return (T)sidebarTabs[i];
+            for (int i = 0; i < sidebarTabs.Count; i++)
+                if (sidebarTabs[i] is T)
+                    return (T)sidebarTabs[i];
             return default;
         }
-        
+
         #endregion
 
         #region Deployment & Withdrawl
@@ -248,7 +249,7 @@ namespace Crescent.UI
             deployButton.onClick += async () =>
             {
                 if (currentGame == null) return;
-                
+
                 bool isDeploying = true;
                 Task animationTask = Task.Run(async () =>
                 {
@@ -280,7 +281,7 @@ namespace Crescent.UI
                     });
                 }
             };
-            
+
             return deployButton;
         }
 
@@ -295,7 +296,7 @@ namespace Crescent.UI
             withdrawButton.onClick += async () =>
             {
                 if (currentGame == null) return;
-                
+
                 bool isWithdrawing = true;
                 Task animationTask = Task.Run(async () =>
                 {
@@ -327,15 +328,15 @@ namespace Crescent.UI
                     });
                 }
             };
-            
+
             return withdrawButton;
         }
-        
+
         #endregion
 
         #region Profiles
-        
-        public StackPanel GetProfileSectionPanel(GameData game)
+
+        public StackPanel GetProfileSectionPanel(PluginData plugin)
         {
             StackPanel profileSection = new()
             {
@@ -357,27 +358,27 @@ namespace Crescent.UI
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
 
-            renderProfiles = () => RenderProfiles(game, profileListStack);
-    
-            Grid headerGrid = GetProfileHeader(game, profileScrollViewer);
-    
+            renderProfiles = () => RenderProfiles(plugin, profileListStack);
+
+            Grid headerGrid = GetProfileHeader(plugin, profileScrollViewer);
+
             profileSection.Children.Add(headerGrid);
             profileSection.Children.Add(profileScrollViewer);
             renderProfiles?.Invoke();
 
             return profileSection;
         }
-        
-        private void RenderProfiles(GameData game, StackPanel profileListStack)
+
+        private void RenderProfiles(PluginData plugin, StackPanel profileListStack)
         {
             profileListStack.Children.Clear();
             ModsTab? modsTab = GetTab<ModsTab>();
-            List<ProfileData> profiles = game.Profiles;
+            List<ProfileData> profiles = plugin.Profiles;
 
             for (int index = 0; index < profiles.Count; index++)
             {
                 ProfileData profile = profiles[index];
-                bool isSelected = string.Equals(profile.name, game.selectedProfileName, StringComparison.OrdinalIgnoreCase);
+                bool isSelected = string.Equals(profile.name, plugin.selectedProfileName, StringComparison.OrdinalIgnoreCase);
 
                 Grid profileGrid = new();
                 profileGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
@@ -390,7 +391,7 @@ namespace Crescent.UI
                     Padding = new Thickness(10, 8)
                 };
 
-                profileButton.onClick += async () => await SetProfileAsync(game, profile, modsTab);
+                profileButton.onClick += async () => await SetProfileAsync(plugin, profile, modsTab);
 
                 CrescentButton menuButton = new(ButtonStyle.Translucent)
                 {
@@ -400,7 +401,7 @@ namespace Crescent.UI
                     VerticalAlignment = VerticalAlignment.Center
                 };
 
-                ContextMenu contextMenu = ProfileContextMenu.Get(game, profile, this);
+                ContextMenu contextMenu = ProfileContextMenu.Get(plugin, profile, this);
                 menuButton.ContextMenu = contextMenu;
                 menuButton.onClick += () => contextMenu.Open(menuButton);
 
@@ -413,8 +414,8 @@ namespace Crescent.UI
                 profileListStack.Children.Add(profileGrid);
             }
         }
-        
-        public Grid GetProfileHeader(GameData game, ScrollViewer profileScrollViewer)
+
+        public Grid GetProfileHeader(PluginData plugin, ScrollViewer profileScrollViewer)
         {
             Grid headerGrid = new();
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
@@ -428,7 +429,7 @@ namespace Crescent.UI
                 FontWeight = FontWeight.Bold,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            
+
             Grid.SetColumn(profileTitle, 0);
             Button addProfileButton = new()
             {
@@ -440,7 +441,7 @@ namespace Crescent.UI
                 Background = Colors.Button,
                 Margin = new Thickness(0, 0, 4, 0)
             };
-            
+
             Grid.SetColumn(addProfileButton, 1);
             Button importProfileButton = new()
             {
@@ -452,7 +453,7 @@ namespace Crescent.UI
                 Background = Colors.Button,
                 Margin = new Thickness(0, 0, 4, 0)
             };
-            
+
             Grid.SetColumn(importProfileButton, 2);
             Button toggleButton = new()
             {
@@ -463,11 +464,11 @@ namespace Crescent.UI
                 Width = 30,
                 Background = Colors.Button
             };
-            
-            Grid.SetColumn(toggleButton, 3);
-            addProfileButton.Click += async (_, _) => await AddProfileAsync(game);
 
-            importProfileButton.Click += async (_, _) => await ProfileUtils.ImportProfileAsync(game, this);
+            Grid.SetColumn(toggleButton, 3);
+            addProfileButton.Click += async (_, _) => await AddProfileAsync(plugin);
+
+            importProfileButton.Click += async (_, _) => await ProfileUtils.ImportProfileAsync(plugin, this);
 
             bool isCollapsed = false;
             toggleButton.Click += (_, _) =>
@@ -483,25 +484,25 @@ namespace Crescent.UI
             headerGrid.Children.Add(toggleButton);
             return headerGrid;
         }
-        
-        #region Profile Interaction
-        
-        public async Task SetProfileAsync(GameData game, ProfileData profile, ModsTab? modsTab)
-        {
-            if (game.selectedProfileName == profile.name) return;
-    
-            DeploymentState previousState = game.deploymentState;
-            if (previousState == DeploymentState.Deployed) game.Withdraw();
 
-            game.selectedProfileName = profile.name;
-            await game.SaveAsync();
+        #region Profile Interaction
+
+        public async Task SetProfileAsync(PluginData plugin, ProfileData profile, ModsTab? modsTab)
+        {
+            if (plugin.selectedProfileName == profile.name) return;
+
+            DeploymentState previousState = plugin.deploymentState;
+            if (previousState == DeploymentState.Deployed) plugin.Withdraw();
+
+            plugin.selectedProfileName = profile.name;
+            await plugin.SaveAsync();
             renderProfiles?.Invoke();
 
-            if (previousState == DeploymentState.Deployed) await game.Deploy();
+            if (previousState == DeploymentState.Deployed) await plugin.Deploy();
             if (modsTab != null) modsTab.Refresh();
         }
-        
-        public async Task AddProfileAsync(GameData game)
+
+        public async Task AddProfileAsync(PluginData plugin)
         {
             Window? parentWindow = TopLevel.GetTopLevel(this) as Window;
             if (parentWindow == null) return;
@@ -510,7 +511,7 @@ namespace Crescent.UI
             await confirmationDialog.ShowDialog(parentWindow);
 
             string newName = confirmationDialog.InputText?.Trim() ?? string.Empty;
-            bool profileExists = game.Profiles.Any(profileItem => string.Equals(profileItem.name, newName, StringComparison.OrdinalIgnoreCase));
+            bool profileExists = plugin.Profiles.Any(profileItem => string.Equals(profileItem.name, newName, StringComparison.OrdinalIgnoreCase));
             if (!string.IsNullOrEmpty(newName) && !profileExists)
             {
                 ProfileData newProfile = new()
@@ -518,25 +519,25 @@ namespace Crescent.UI
                     name = newName
                 };
 
-                game.Profiles.Add(newProfile);
-                game.selectedProfileName = newProfile.name;
-                await game.SaveAsync();
-        
+                plugin.Profiles.Add(newProfile);
+                plugin.selectedProfileName = newProfile.name;
+                await plugin.SaveAsync();
+
                 renderProfiles?.Invoke();
                 ModsTab? modsTab = GetTab<ModsTab>();
                 if (modsTab != null) modsTab.Refresh();
             }
         }
-        
-        #endregion
-        
+
         #endregion
 
-        public void UpdateDeploymentStatus(GameData game)
+        #endregion
+
+        public void UpdateDeploymentStatus(PluginData plugin)
         {
             if (deploymentText == null) return;
-            deploymentText.Text = game.DeploymentStatus;
-            deploymentText.Foreground = game.DeploymentState switch
+            deploymentText.Text = plugin.DeploymentStatus;
+            deploymentText.Foreground = plugin.DeploymentState switch
             {
                 DeploymentState.Deployed => Colors.Green,
                 DeploymentState.Deploying => Brushes.Yellow,

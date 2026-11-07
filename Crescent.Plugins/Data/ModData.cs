@@ -21,6 +21,7 @@ namespace Crescent.Plugins
         public bool isDeployed;
         public bool isManual;
         public List<string> ownedFiles = new();
+        public List<string> requirementIds = new();
 
         public Update update = new();
         public Url url;
@@ -91,13 +92,13 @@ namespace Crescent.Plugins
         
         public ModData() { }
 
-        public ModData(GameData gameData, string modName, string filePath)
+        public ModData(PluginData pluginData, string modName, string filePath)
         {
             this.filePath = filePath;
             this.modName = modName;
             
-            isManual = gameData.IsCoreMod(this) ? true : filePath.Contains("Manual", StringComparison.OrdinalIgnoreCase);
-            url = GetUrl(gameData.BaseUrl);
+            isManual = pluginData.IsCoreMod(this) ? true : filePath.Contains("Manual", StringComparison.OrdinalIgnoreCase);
+            url = GetUrl(pluginData.API.BaseUrl);
         }
 
         public Url GetUrl(string baseUrl)
@@ -121,10 +122,11 @@ namespace Crescent.Plugins
             else url = new(baseUrl, string.Empty);
             return url;
         }
-
-        public void OpenInExplorer()
+   
+        public async Task LoadRequirementsAsync(string gameDomain)
         {
-            
+            if (string.IsNullOrEmpty(url.nexusId)) return;
+            requirementIds = await NexusUtils.GetRequirementIdsAsync(gameDomain, url.nexusId);
         }
 
         #region File Management
@@ -166,8 +168,19 @@ namespace Crescent.Plugins
                 ".rar",
                 ".7z"
             };
-
+            
             Logger.Log($"Deleting {modName}...");
+            for (int extension = 0; extension < possibleExtensions.Length; extension++)
+            {
+                string unExtractedFilePath = Path.Combine(stagingPath, Path.GetFileNameWithoutExtension(filePath) + possibleExtensions[extension]);
+                if (File.Exists(unExtractedFilePath))
+                {
+                    string manualArchiveName = Path.GetFileName(unExtractedFilePath);
+                    Logger.Log($"  Deleted un-extracted archive: {manualArchiveName}");
+                    File.Delete(unExtractedFilePath);
+                }
+            }
+            
             if (Directory.Exists(filePath))
             {
                 Logger.Log($"  Deleted manual mod: {modName}");
@@ -187,7 +200,7 @@ namespace Crescent.Plugins
                 }
             }
 
-            string archivePath = Path.Combine(stagingPath, GameData.Archive);
+            string archivePath = Path.Combine(stagingPath, PluginData.Archive);
             if (Directory.Exists(archivePath))
             {
                 for (int extension = 0; extension < possibleExtensions.Length; extension++)
@@ -214,14 +227,14 @@ namespace Crescent.Plugins
 
             try
             {
-                JObject jsonObject = await NexusUtils.GetModFilesJsonAsync(gameDomain, url.nexusId);
+                JObject? jsonObject = await NexusUtils.GetModFilesJsonAsync(gameDomain, url.nexusId);
                 if (jsonObject == null)
                 {
                     update.hasValidNexusData = false;
                     return;
                 }
 
-                JArray filesArray = jsonObject["files"] as JArray;
+                JArray? filesArray = jsonObject["files"] as JArray;
                 if (filesArray == null || filesArray.Count == 0)
                 {
                     update.hasValidNexusData = false;
@@ -229,6 +242,7 @@ namespace Crescent.Plugins
                 }
 
                 UpdateFiles(filesArray);
+                await LoadRequirementsAsync(gameDomain);
             }
             catch (Exception exception)
             {

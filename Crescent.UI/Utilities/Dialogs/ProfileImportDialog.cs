@@ -22,7 +22,7 @@ namespace Crescent.UI
 
         public bool ImportSuccess { get; private set; }
 
-        public ProfileImportDialog(GameData gameData, ExportedProfile exportedProfile, ProfileData targetProfile)
+        public ProfileImportDialog(PluginData pluginData, ExportedProfile exportedProfile, ProfileData targetProfile)
         {
             Title = $"Importing Profile";
             SizeToContent = SizeToContent.Height;
@@ -103,10 +103,10 @@ namespace Crescent.UI
             mainPanel.Children.Add(grid);
             
             Content = mainPanel;
-            StartImportQueue(gameData, exportedProfile, targetProfile);
+            StartImportQueue(pluginData, exportedProfile, targetProfile);
         }
 
-        private void StartImportQueue(GameData gameData, ExportedProfile exportedProfile, ProfileData profile)
+        private void StartImportQueue(PluginData pluginData, ExportedProfile exportedProfile, ProfileData profile)
         {
             Task.Run(async () =>
             {
@@ -116,7 +116,7 @@ namespace Crescent.UI
                     foreach (ExportedProfile.ExportedMod exportedMod in exportedProfile.mods)
                     {
                         bool found = false;
-                        foreach (ModData installedMod in gameData.installedMods)
+                        foreach (ModData installedMod in pluginData.installedMods)
                         {
                             if (!string.IsNullOrEmpty(installedMod.url.nexusUrl) && string.Equals(installedMod.url.nexusUrl, exportedMod.url, StringComparison.OrdinalIgnoreCase))
                             {
@@ -136,7 +136,7 @@ namespace Crescent.UI
                         if (!found) missingMods.Add(exportedMod);
                     }
 
-                    await gameData.SaveAsync();
+                    await pluginData.SaveAsync();
 
                     if (missingMods.Count == 0)
                     {
@@ -150,7 +150,7 @@ namespace Crescent.UI
                         return;
                     }
 
-                    if (string.IsNullOrEmpty(gameData.StagingPath) || !Directory.Exists(gameData.StagingPath))
+                    if (string.IsNullOrEmpty(pluginData.StagingPath) || !Directory.Exists(pluginData.StagingPath))
                     {
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {
@@ -216,12 +216,12 @@ namespace Crescent.UI
                                         string downloadUrl = await NexusUtils.GetDownloadUrlAsync(gameDomain, nexusId, fileId);
                                         if (!string.IsNullOrEmpty(downloadUrl))
                                         {
-                                            string? savedPath = await NexusUtils.DownloadFileAsync(downloadUrl, gameData.StagingPath, fileName);
+                                            string? savedPath = await NexusUtils.DownloadFileAsync(downloadUrl, pluginData.StagingPath, fileName);
                                             if (!string.IsNullOrEmpty(savedPath))
                                             {
-                                                ModData newModData = new(gameData, Path.GetFileName(savedPath), savedPath);
-                                                gameData.installedMods.Add(newModData);
-                                                gameData.OnModLoaded(newModData);
+                                                ModData newModData = new(pluginData, Path.GetFileName(savedPath), savedPath);
+                                                pluginData.installedMods.Add(newModData);
+                                                pluginData.OnModLoaded(newModData);
                                                 profile.SetModEnabled(newModData, mod.isEnabled);
                                             }
                                         }
@@ -230,7 +230,7 @@ namespace Crescent.UI
                             }
                         }
 
-                        await gameData.SaveAsync();
+                        await pluginData.SaveAsync();
                         await Dispatcher.UIThread.InvokeAsync(() => { progressBar!.Value = queueIndex; });
                         await Task.Delay(300);
                     }

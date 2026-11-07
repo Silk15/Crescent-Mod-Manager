@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Crescent.APIs.NexusMods;
 using Crescent.Plugins;
 using Crescent.Utilities;
 
@@ -10,7 +11,7 @@ namespace Crescent.UI
 {
     public class RenderedMod : Grid
     {
-        public GameData gameData;
+        public PluginData pluginData;
         public ModData modData;
         public ModsTab modsTab;
     
@@ -43,13 +44,13 @@ namespace Crescent.UI
             {
                 modData.isManual = value;
                 if (manualButton is CrescentButton crescentButton) crescentButton.customColor = modData.isManual ? Colors.Red : Colors.Green;
-                manualButton.Content = modData.isManual ? GameData.Manual : GameData.Managed;
+                manualButton.Content = modData.isManual ? PluginData.Manual : PluginData.Managed;
             }
         }
 
-        public RenderedMod(GameData gameData, ModData modData, ModsTab modsTab)
+        public RenderedMod(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
-            this.gameData = gameData;
+            this.pluginData = pluginData;
             this.modData = modData;
             this.modsTab = modsTab;
 
@@ -101,19 +102,19 @@ namespace Crescent.UI
         {
             CheckBox checkBox = new()
             {
-                Content = modData.DisplayName.WithoutNumbers(),
-                IsChecked = gameData.SelectedProfile.IsModEnabled(modData),
+                Content = modData.DisplayName.Cleaned(),
+                IsChecked = pluginData.SelectedProfile.IsModEnabled(modData),
                 VerticalAlignment = VerticalAlignment.Center
             };
 
             checkBox.IsCheckedChanged += async (_, _) =>
             {
                 bool isEnabled = checkBox.IsChecked ?? true;
-                gameData.SelectedProfile.SetModEnabled(modData, isEnabled);
+                pluginData.SelectedProfile.SetModEnabled(modData, isEnabled);
                 
-                if (isEnabled) gameData.TryDeploy();
-                else gameData.WithdrawMod(modData);
-                await gameData.SaveAsync();
+                if (isEnabled) pluginData.TryDeploy();
+                else pluginData.WithdrawMod(modData);
+                await pluginData.SaveAsync();
             };
 
             return checkBox;
@@ -191,7 +192,7 @@ namespace Crescent.UI
 
             checkButton.onClick += async () =>
             {
-                await modData.CheckForUpdateAsync(gameData.NexusName);
+                await modData.CheckForUpdateAsync(pluginData.API.Name);
                 RefreshMod();
             };
                 
@@ -235,7 +236,7 @@ namespace Crescent.UI
 
                     try
                     {
-                        await ModInteractionUtils.UpdateAsync(gameData, modData);
+                        await ModInteractionUtils.UpdateAsync(pluginData, modData);
                     }
                     finally
                     {
@@ -259,14 +260,14 @@ namespace Crescent.UI
         {
             CrescentButton manualButton = new(modData.isManual ? Colors.Red : Colors.Green)
             {
-                Content = modData.isManual ? GameData.Manual : GameData.Managed,
+                Content = modData.isManual ? PluginData.Manual : PluginData.Managed,
                 Width = 115,
                 Margin = new Thickness(10, 0, 0, 0)
             };
 
             manualButton.onClick += async () =>
             {
-                await ModInteractionUtils.ToggleManualInstallAsync(gameData, modData);
+                await ModInteractionUtils.ToggleManualInstallAsync(pluginData, modData);
                 manualButton.customColor = modData.isManual ? Colors.Red : Colors.Green;
                 modsTab.RenderMods();
             };
@@ -283,7 +284,7 @@ namespace Crescent.UI
                 Margin = new Thickness(8, 0, 0, 0)
             };
 
-            ContextMenu contextMenu = ModContextMenu.Get(gameData, modData, modsTab);
+            ContextMenu contextMenu = ModContextMenu.Get(pluginData, modData, modsTab);
             menuButton.ContextMenu = contextMenu;
             menuButton.onClick += () => contextMenu.Open(menuButton);
 

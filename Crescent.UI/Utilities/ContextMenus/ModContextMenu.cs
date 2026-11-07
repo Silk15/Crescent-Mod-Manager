@@ -8,7 +8,7 @@ namespace Crescent.UI
 {
     public static class ModContextMenu
     {
-        public static ContextMenu Get(GameData gameData, ModData modData, ModsTab modsTab)
+        public static ContextMenu Get(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
             ContextMenu contextMenu = new();
             contextMenu.Background = Colors.MainGradient;
@@ -23,23 +23,23 @@ namespace Crescent.UI
                 Height = 1
             });
 
-            contextMenu.Items.Add(GetUpdateButton(gameData, modData, modsTab));
-            contextMenu.Items.Add(GetCheckButton(gameData, modData, modsTab));
+            contextMenu.Items.Add(GetUpdateButton(pluginData, modData, modsTab));
+            contextMenu.Items.Add(GetCheckButton(pluginData, modData, modsTab));
             contextMenu.Items.Add(new Separator
             {
                 Background = Colors.Separator,
                 Height = 1
             });
 
-            contextMenu.Items.Add(GetProfilesButton(gameData, modData, modsTab));
+            contextMenu.Items.Add(GetProfilesButton(pluginData, modData, modsTab));
             contextMenu.Items.Add(new Separator
             {
                 Background = Colors.Separator,
                 Height = 1
             });
 
-            contextMenu.Items.Add(GetRenameButton(gameData, modData, modsTab));
-            contextMenu.Items.Add(GetDeleteButton(gameData, modData, modsTab));
+            contextMenu.Items.Add(GetRenameButton(pluginData, modData, modsTab));
+            contextMenu.Items.Add(GetDeleteButton(pluginData, modData, modsTab));
             return contextMenu;
         }
 
@@ -70,7 +70,7 @@ namespace Crescent.UI
             return openFolderMenuItem;
         }
 
-        public static MenuItem GetProfilesButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem GetProfilesButton(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
             MenuItem profileMenu = new()
             {
@@ -79,7 +79,7 @@ namespace Crescent.UI
                 Margin = new(10, 0, 10, 0)
             };
 
-            List<ProfileData> allProfiles = gameData.Profiles;
+            List<ProfileData> allProfiles = pluginData.Profiles;
             for (int i = 0; i < allProfiles.Count; i++)
             {
                 ProfileData profile = allProfiles[i];
@@ -95,7 +95,7 @@ namespace Crescent.UI
                 {
                     bool newState = !profile.IsModEnabled(modData);
                     profile.SetModEnabled(modData, newState);
-                    await gameData.SaveAsync();
+                    await pluginData.SaveAsync();
                     modsTab.RenderMods();
                 };
                 
@@ -106,7 +106,7 @@ namespace Crescent.UI
             return profileMenu;
         }
 
-        public static MenuItem GetUpdateButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem GetUpdateButton(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
             MenuItem updateButton = new()
             {
@@ -130,7 +130,7 @@ namespace Crescent.UI
                             if (!updateDialog.UpdateConfirmed) return;
                         }
 
-                        await ModInteractionUtils.UpdateAsync(gameData, modData);
+                        await ModInteractionUtils.UpdateAsync(pluginData, modData);
                         if (renderedMod != null) renderedMod.RefreshMod();
                     }
                     catch (Exception exception)
@@ -143,7 +143,7 @@ namespace Crescent.UI
             return updateButton;
         }
 
-        public static MenuItem GetCheckButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem GetCheckButton(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
             MenuItem checkButton = new()
             {
@@ -155,14 +155,14 @@ namespace Crescent.UI
             RenderedMod? renderedMod = modsTab.renderedMods.Find(item => item.modData == modData);
             checkButton.Click += async (_, _) =>
             {
-                await modData.CheckForUpdateAsync(gameData.NexusName);
+                await modData.CheckForUpdateAsync(pluginData.API.Name);
                 if (renderedMod != null) renderedMod.RefreshMod();
             };
             
             return checkButton;
         }
 
-        public static MenuItem? GetRenameButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem? GetRenameButton(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
             MenuItem renameButton = new()
             {
@@ -184,7 +184,7 @@ namespace Crescent.UI
                     if (!string.IsNullOrEmpty(newName) && newName != oldName)
                     {
                         modData.displayName = newName;
-                        await gameData.SaveAsync();
+                        await pluginData.SaveAsync();
                     }
                 }
             };
@@ -192,7 +192,7 @@ namespace Crescent.UI
             return renameButton;
         }
 
-        public static MenuItem GetDeleteButton(GameData gameData, ModData modData, ModsTab modsTab)
+        public static MenuItem GetDeleteButton(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
             MenuItem deleteButton = new()
             {
@@ -203,11 +203,11 @@ namespace Crescent.UI
             
             deleteButton.Click += async (_, _) =>
             {
-                gameData.WithdrawMod(modData);
-                gameData.installedMods.Remove(modData);
-                modData.DeleteFiles(gameData.StagingPath);
+                pluginData.WithdrawMod(modData);
+                pluginData.installedMods.Remove(modData);
+                modData.DeleteFiles(pluginData.StagingPath);
                 
-                await gameData.SaveAsync();
+                await pluginData.SaveAsync();
                 modsTab.RenderMods();
             };
             

@@ -10,12 +10,12 @@ namespace Crescent.Plugins
 
         public ExportedProfile() { }
 
-        public ExportedProfile(GameData gameData, ProfileData profileData)
+        public ExportedProfile(PluginData pluginData, ProfileData profileData)
         {
             profileName = profileData.name;
-            gameName = gameData.Name;
+            gameName = pluginData.Name;
 
-            foreach (ModData modData in gameData.installedMods)
+            foreach (ModData modData in pluginData.installedMods)
             {
                 if (profileData.IsModInstalled(modData))
                 {

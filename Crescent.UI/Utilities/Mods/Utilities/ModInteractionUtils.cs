@@ -8,31 +8,31 @@ namespace Crescent.UI
     {
         #region Update Operations
 
-        public static async Task UpdateAsync(GameData game, ModData modData)
+        public static async Task UpdateAsync(PluginData plugin, ModData modData)
         {
-            if (string.IsNullOrEmpty(game.StagingPath) || string.IsNullOrEmpty(modData.LatestFileId) || string.IsNullOrEmpty(modData.url.nexusId) || string.IsNullOrEmpty(NexusAuthenticator.ApiKey?.key)) return;
+            if (string.IsNullOrEmpty(plugin.StagingPath) || string.IsNullOrEmpty(modData.LatestFileId) || string.IsNullOrEmpty(modData.url.nexusId) || string.IsNullOrEmpty(NexusAuthenticator.ApiKey?.key)) return;
             try
             {
                 bool deployed = modData.isDeployed;
-                if (deployed) game.WithdrawMod(modData);
+                if (deployed) plugin.WithdrawMod(modData);
 
-                string downloadUrl = await NexusUtils.GetDownloadUrlAsync(game.NexusName, modData.url.nexusId, modData.LatestFileId);
+                string downloadUrl = await NexusUtils.GetDownloadUrlAsync(plugin.API.Name, modData.url.nexusId, modData.LatestFileId);
                 if (string.IsNullOrEmpty(downloadUrl)) return;
 
                 string fallbackName = $"{modData.DisplayName}.zip";
-                string? destinationPath = await NexusUtils.DownloadFileAsync(downloadUrl, game.StagingPath, fallbackName);
+                string? destinationPath = await NexusUtils.DownloadFileAsync(downloadUrl, plugin.StagingPath, fallbackName);
 
                 if (string.IsNullOrEmpty(destinationPath)) return;
 
                 string fileName = Path.GetFileName(destinationPath);
-                modData.DeleteFiles(game.StagingPath);
+                modData.DeleteFiles(plugin.StagingPath);
 
                 modData.filePath = destinationPath;
                 modData.modName = fileName;
                 modData.version = modData.LatestVersion;
                 modData.UpdateAvailable = false;
-                await game.SaveAsync();
-                if (deployed) await game.Deploy();
+                await plugin.SaveAsync();
+                if (deployed) await plugin.Deploy();
             }
             catch (Exception exception)
             {
@@ -44,25 +44,25 @@ namespace Crescent.UI
 
         #region Manual Installation Operations
 
-        public static async Task ToggleManualInstallAsync(GameData game, ModData modData)
+        public static async Task ToggleManualInstallAsync(PluginData plugin, ModData modData)
         {
-            if (string.IsNullOrEmpty(game.StagingPath) || string.IsNullOrEmpty(game.DeploymentPath)) return;
+            if (string.IsNullOrEmpty(plugin.StagingPath) || string.IsNullOrEmpty(plugin.DeploymentPath)) return;
 
-            string manualFolder = Path.Combine(game.StagingPath, GameData.Manual);
+            string manualFolder = Path.Combine(plugin.StagingPath, PluginData.Manual);
             if (!Directory.Exists(manualFolder)) Directory.CreateDirectory(manualFolder);
 
             string fileName = Path.GetFileName(modData.filePath);
             bool directoryExists = Directory.Exists(modData.filePath);
 
-            if (!modData.isManual) EnableManualInstall(game, modData, manualFolder, fileName, directoryExists);
-            else DisableManualInstall(game, modData, manualFolder, fileName, directoryExists);
-            await game.SaveAsync();
+            if (!modData.isManual) EnableManualInstall(plugin, modData, manualFolder, fileName, directoryExists);
+            else DisableManualInstall(plugin, modData, manualFolder, fileName, directoryExists);
+            await plugin.SaveAsync();
         }
 
-        private static void EnableManualInstall(GameData game, ModData modData, string manualFolder, string fileName, bool directoryExists)
+        private static void EnableManualInstall(PluginData plugin, ModData modData, string manualFolder, string fileName, bool directoryExists)
         {
             modData.isManual = true;
-            string rootPath = Path.Combine(game.StagingPath, fileName);
+            string rootPath = Path.Combine(plugin.StagingPath, fileName);
             string manualPath = Path.Combine(manualFolder, fileName);
 
             if (directoryExists)
@@ -78,7 +78,7 @@ namespace Crescent.UI
 
             string modName = directoryExists ? fileName : Path.GetFileNameWithoutExtension(fileName);
             string manualDirectory = Path.Combine(manualFolder, modName);
-            string extractedDirectory = Path.Combine(game.StagingPath, modName);
+            string extractedDirectory = Path.Combine(plugin.StagingPath, modName);
 
             if (!directoryExists && Directory.Exists(extractedDirectory))
             {
@@ -98,7 +98,7 @@ namespace Crescent.UI
                 foreach (string sourceFile in sourceFiles)
                 {
                     string relativePath = Path.GetRelativePath(sourceDirectory, sourceFile);
-                    string targetFile = Path.Combine(game.DeploymentPath, relativePath);
+                    string targetFile = Path.Combine(plugin.DeploymentPath, relativePath);
                     string? targetDirectory = Path.GetDirectoryName(targetFile);
 
                     if (!string.IsNullOrEmpty(targetDirectory) && !Directory.Exists(targetDirectory))
@@ -110,11 +110,11 @@ namespace Crescent.UI
             }
         }
 
-        private static void DisableManualInstall(GameData game, ModData modData, string manualFolder, string fileName, bool directoryExists)
+        private static void DisableManualInstall(PluginData plugin, ModData modData, string manualFolder, string fileName, bool directoryExists)
         {
             modData.isManual = false;
             string manualPath = Path.Combine(manualFolder, fileName);
-            string rootPath = Path.Combine(game.StagingPath, fileName);
+            string rootPath = Path.Combine(plugin.StagingPath, fileName);
 
             string modName = directoryExists ? fileName : Path.GetFileNameWithoutExtension(fileName);
             string manualDirectory = Path.Combine(manualFolder, modName);
@@ -126,7 +126,7 @@ namespace Crescent.UI
                 foreach (string sourceFile in sourceFiles)
                 {
                     string relativePath = Path.GetRelativePath(sourceDirectory, sourceFile);
-                    string targetFile = Path.Combine(game.DeploymentPath, relativePath);
+                    string targetFile = Path.Combine(plugin.DeploymentPath, relativePath);
                     if (File.Exists(targetFile)) File.Delete(targetFile);
                 }
 

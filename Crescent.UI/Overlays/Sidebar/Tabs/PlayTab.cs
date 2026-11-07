@@ -13,7 +13,7 @@ namespace Crescent.UI
     public class PlayTab : Grid, ISidebarTab
     {
         public TextBlock? consoleOutput;
-        public GameData? gameData;
+        public PluginData? gameData;
         public SidebarOverlay? sidebarOverlay;
         public Stopwatch stopwatch;
 
@@ -29,12 +29,12 @@ namespace Crescent.UI
             Padding = new Thickness(10, 8)
         };
 
-        public void OnLoaded(SidebarOverlay sidebarOverlay, GameData gameData)
+        public void OnLoaded(SidebarOverlay sidebarOverlay, PluginData pluginData)
         {
             try
             {
                 Children.Clear();
-                this.gameData = gameData;
+                this.gameData = pluginData;
                 this.sidebarOverlay = sidebarOverlay;
 
                 Margin = new Thickness(30, 15, 30, 30);

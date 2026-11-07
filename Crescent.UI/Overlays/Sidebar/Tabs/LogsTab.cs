@@ -7,7 +7,7 @@ namespace Crescent.UI
 {
     public class LogsTab : StackPanel, ISidebarTab
     {
-        public GameData? gameData;
+        public PluginData? gameData;
         public SidebarOverlay? sidebarOverlay;
         
         public Tab Tab => Tab.Logs;
@@ -20,9 +20,9 @@ namespace Crescent.UI
             Padding = new Thickness(10, 8)
         };
 
-        public void OnLoaded(SidebarOverlay sidebarOverlay, GameData gameData)
+        public void OnLoaded(SidebarOverlay sidebarOverlay, PluginData pluginData)
         {
-            this.gameData = gameData;
+            this.gameData = pluginData;
             this.sidebarOverlay = sidebarOverlay;
         }
         
