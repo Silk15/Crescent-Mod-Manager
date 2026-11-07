@@ -49,11 +49,14 @@ namespace Crescent.Plugins
 
                     if (!Directory.Exists(Runtime.GamesPath)) Directory.CreateDirectory(Runtime.GamesPath);
                     string dataName = pluginData.Name.ToLower().Replace(" ", "");
-                    string filePath = Path.Combine(Runtime.GamesPath, pluginData.Name, dataName + ".sav");
+                    string folderPath = Path.Combine(Runtime.GamesPath, pluginData.Name);
                     try
                     {
+                        string filePath = Path.Combine(folderPath, dataName + ".sav");
+                        if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
+                        
                         if (File.Exists(filePath)) pluginData = await FileManager.ReadJson(type, filePath) as PluginData;
-                        else await FileManager.WriteJson(filePath, (dynamic)pluginData);
+                        else await FileManager.WriteJson(folderPath, (dynamic)pluginData);
 
                         if (pluginData != null)
                         {

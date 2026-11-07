@@ -151,7 +151,7 @@ namespace Crescent.UI
                         return;
                     }
 
-                    JToken? targetFile = ResolveTargetFile(filesArray);
+                    JToken? targetFile = GetTargetFile(filesArray);
                     if (targetFile == null)
                     {
                         await SetStatusAsync("No valid files found.", false);
@@ -184,7 +184,7 @@ namespace Crescent.UI
                             if (requiredFiles != null)
                             {
                                 JArray? reqFilesArray = requiredFiles["files"] as JArray;
-                                JToken? reqTargetFile = ResolveTargetFile(reqFilesArray);
+                                JToken? reqTargetFile = GetTargetFile(reqFilesArray);
                                 if (reqTargetFile != null)
                                 {
                                     currentFileId = reqTargetFile["file_id"]?.ToString() ?? string.Empty;
@@ -230,22 +230,44 @@ namespace Crescent.UI
             });
         }
 
-        private JToken? ResolveTargetFile(JArray? filesArray)
+        private JToken? GetTargetFile(JArray? filesArray)
         {
             if (filesArray == null || filesArray.Count == 0) return null;
 
             IEnumerable<JToken> category1Files = filesArray.Where(f => f["category_id"]?.Value<int>() == 1);
-            JToken? latestCategory1 = category1Files.OrderByDescending(f => f["uploaded_time"]?.Value<long>() ?? f["file_id"]?.Value<long>() ?? 0).FirstOrDefault();
+            JToken? latestCategory1 = category1Files.OrderByDescending(GetSortValue).FirstOrDefault();
 
             if (latestCategory1 != null) return latestCategory1;
-            return filesArray.OrderByDescending(f => f["uploaded_time"]?.Value<long>() ?? f["file_id"]?.Value<long>() ?? 0).FirstOrDefault() ?? filesArray[0];
+            return filesArray.OrderByDescending(GetSortValue).FirstOrDefault() ?? filesArray[0];
+            
+            long GetSortValue(JToken file)
+            {
+                JToken? timeToken = file["uploaded_time"];
+                if (timeToken != null && timeToken.Type != JTokenType.Null)
+                {
+                    if (timeToken.Type == JTokenType.Date) return timeToken.Value<DateTime>().Ticks;
+                    if (long.TryParse(timeToken.ToString(), out long lVal)) return lVal;
+                }
+
+                JToken? idToken = file["file_id"];
+                if (idToken != null && idToken.Type != JTokenType.Null)
+                {
+                    if (long.TryParse(idToken.ToString(), out long idValue))
+                        return idValue;
+                }
+
+                return 0;
+            }
         }
 
         private async Task<List<string>> CollectRequirementIdsAsync(string gameDomain, string nexusId, PluginData pluginData)
         {
-            List<string> downloadQueueIds = new List<string> { nexusId };
+            List<string> downloadQueueIds = new()
+            {
+                nexusId
+            };
+            
             List<string> requirementIds = await NexusUtils.GetRequirementIdsAsync(gameDomain, nexusId);
-
             for (int i = 0; i < requirementIds.Count; i++)
             {
                 string reqId = requirementIds[i];
