@@ -20,11 +20,12 @@ And that's it. When you start Crescent you'll be able to set staging and executa
 
 
 <img width="1495" height="931" alt="Screenshot 2026-11-01 220946" src="https://github.com/user-attachments/assets/cf14e344-d8eb-4d56-9d14-aa6e898ffd09" />
+<img width="1915" height="1079" alt="image" src="https://github.com/user-attachments/assets/ebf57137-3ea3-4f82-ab77-2bcf3fbc95de" />
 
 
-> *Parts of this project were written with AI, such as:*
+> *Parts of this project were written with AI and/or AI Assistance, such as:*
 > - *The **base** of the UI*
 > - *Nexus API requests*
 > - *A good chunk of the file deployment.*
 
-> *However that code has been majorly refactored to actually work with my project and be extensible. Both in the way I want and literally. However I refuse to ever entirely vibe code something or paste code in, especially not without extensively checking it.*
+> *However that code has been majorly refactored to actually work with my project and be extensible. Both in the way I want and literally. I refuse to ever entirely vibe code something or paste code in, especially not without extensively checking it.*
