@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
-using Crescent.APIs.NexusMods;
 using Crescent.Plugins;
 using Crescent.Utilities;
 
@@ -14,10 +13,11 @@ namespace Crescent.UI
         public PluginData pluginData;
         public ModData modData;
         public ModsTab modsTab;
-    
-        public TextBlock versionBlock;
-        public CheckBox modCheckBox;
+
+        public ToggleSwitch modToggle;
+        public TextBlock nameBlock;
         public Control updateControl;
+        public TextBlock versionBlock;
         public Button manualButton;
         public Button menuButton;
 
@@ -33,8 +33,8 @@ namespace Crescent.UI
 
         public bool IsChecked
         {
-            get => modCheckBox.IsChecked ?? false;
-            set => modCheckBox.IsChecked = value;
+            get => modToggle.IsChecked ?? false;
+            set => modToggle.IsChecked = value;
         }
 
         public bool IsManual
@@ -54,70 +54,125 @@ namespace Crescent.UI
             this.modData = modData;
             this.modsTab = modsTab;
 
+            ColumnDefinitions.Add(new ColumnDefinition(new GridLength(55, GridUnitType.Pixel)));
             ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-            ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            ColumnDefinitions.Add(new ColumnDefinition(new GridLength(95, GridUnitType.Pixel)));
             ColumnDefinitions.Add(new ColumnDefinition(new GridLength(90, GridUnitType.Pixel)));
             ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
             ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
-            modCheckBox = GetModCheckBox();
-            SetColumn(modCheckBox, 0);
-            
+            modToggle = GetModToggle();
+            SetColumn(modToggle, 0);
+
+            nameBlock = GetNameTextBlock();
+            SetColumn(nameBlock, 1);
+
             updateControl = GetUpdateControl();
-            SetColumn(updateControl, 1);
+            SetColumn(updateControl, 2);
 
             versionBlock = GetVersionTextBlock();
-            SetColumn(versionBlock, 2);
+            SetColumn(versionBlock, 3);
 
             manualButton = GetManualButton();
-            SetColumn(manualButton, 3);
+            SetColumn(manualButton, 4);
 
             menuButton = GetMenuButton();
-            SetColumn(menuButton, 4);
+            SetColumn(menuButton, 5);
 
-            Children.Add(modCheckBox);
-            Children.Add(versionBlock);
+            Children.Add(modToggle);
+            Children.Add(nameBlock);
             Children.Add(updateControl);
+            Children.Add(versionBlock);
             Children.Add(manualButton);
             Children.Add(menuButton);
         }
-        
+
         public void UpdateControl()
         {
             if (Children.Contains(updateControl)) Children.Remove(updateControl);
             updateControl = GetUpdateControl();
-            SetColumn(updateControl, 1);
+            SetColumn(updateControl, 3);
             Children.Add(updateControl);
+        }
+
+        public void RefreshDeployedState()
+        {
+            bool isEnabled = pluginData.SelectedProfile.IsModEnabled(modData);
+            nameBlock.Foreground = isEnabled ? Brushes.White : Brushes.Gray;
         }
 
         public void RefreshMod()
         {
             Version = modData.version;
+            nameBlock.Text = modData.DisplayName.Cleaned();
+            RefreshDeployedState();
             UpdateControl();
         }
 
-        #region Buttons & Updating
+        #region Controls & Updating
 
-        public CheckBox GetModCheckBox()
+        public ToggleSwitch GetModToggle()
         {
-            CheckBox checkBox = new()
+            ToggleSwitch toggleSwitch = new()
             {
-                Content = modData.DisplayName.Cleaned(),
                 IsChecked = pluginData.SelectedProfile.IsModEnabled(modData),
-                VerticalAlignment = VerticalAlignment.Center
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                OffContent = string.Empty,
+                OnContent = string.Empty
             };
 
-            checkBox.IsCheckedChanged += async (_, _) =>
+            toggleSwitch.IsCheckedChanged += async (_, _) =>
             {
-                bool isEnabled = checkBox.IsChecked ?? true;
-                pluginData.SelectedProfile.SetModEnabled(modData, isEnabled);
-                
-                if (isEnabled) pluginData.TryDeploy();
-                else pluginData.WithdrawMod(modData);
-                await pluginData.SaveAsync();
+                try
+                {
+                    toggleSwitch.IsEnabled = false;
+                    bool isEnabled = toggleSwitch.IsChecked ?? false;
+                    pluginData.SelectedProfile.SetModEnabled(modData, isEnabled);
+                    nameBlock.Foreground = isEnabled ? Brushes.White : Brushes.Gray;
+
+                    string cleanName = modData.DisplayName.Cleaned();
+                    if (isEnabled)
+                    {
+                        ToastManager.ShowProgress("Deploying Mod", $"Deploying {cleanName}...", pluginData.Name, 0, true);
+                        await pluginData.Deploy();
+                        await Task.Run(() => ModInteractionUtils.SyncModDeploymentState(pluginData, modData));
+                        modsTab.RefreshDeployedStates();
+                        ToastManager.CompleteProgress("Mod Deployed", $"Deployed {cleanName}", ToastType.Success, 3000, $"{pluginData.Name} • {pluginData.SelectedProfile.name}");
+                    }
+                    else
+                    {
+                        await Task.Run(() => ModInteractionUtils.WithdrawModFiles(pluginData, modData));
+                        RefreshDeployedState();
+                        ToastManager.Show("Mod Withdrawn", $"Withdrew {cleanName}", ToastType.Info, 3000, $"{pluginData.Name} • {pluginData.SelectedProfile.name}");
+                    }
+
+                    await pluginData.SaveAsync();
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception.ToString());
+                }
+                finally
+                {
+                    toggleSwitch.IsEnabled = true;
+                }
             };
 
-            return checkBox;
+            return toggleSwitch;
+        }
+
+        public TextBlock GetNameTextBlock()
+        {
+            bool isEnabled = pluginData.SelectedProfile.IsModEnabled(modData);
+            return new()
+            {
+                Text = modData.DisplayName.Cleaned(),
+                Foreground = isEnabled ? Brushes.White : Brushes.Gray,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 0, 10, 0)
+            };
         }
 
         public Control GetUpdateControl()
@@ -130,55 +185,49 @@ namespace Crescent.UI
 
             if (!modData.HasValidNexusData)
                 return GetInvalidBlock();
-            
+
             if (modData.UpdateAvailable) return GetUpdateButton();
             return new Control();
         }
 
         public TextBlock GetVersionTextBlock()
         {
-            TextBlock versionBlock = new()
+            return new()
             {
                 Text = string.IsNullOrEmpty(modData.version) ? "-" : $"v{modData.version}",
                 Foreground = Brushes.LightGray,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                TextAlignment = TextAlignment.Left,
+                TextAlignment = TextAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(5, 0, 5, 0)
             };
-            
-            return versionBlock;
         }
 
         public TextBlock GetDisconnectedBlock()
         {
-            TextBlock disconnected = new()
+            return new()
             {
                 Text = "Disconnected",
                 Width = 85,
-                Height = 35,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Colors.Red,
-                Margin = new Thickness(10, 0, 0, 0)
+                TextAlignment = TextAlignment.Center,
+                Foreground = Colors.Red
             };
-            return disconnected;
         }
 
         public TextBlock GetInvalidBlock()
         {
-            TextBlock invalidData = new()
+            return new()
             {
                 Text = "Invalid Data",
                 Width = 85,
-                Height = 35,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
-                Foreground = Colors.Red,
-                Margin = new Thickness(10, 0, 0, 0)
+                TextAlignment = TextAlignment.Center,
+                Foreground = Colors.Red
             };
-                
-            return invalidData;
         }
 
         public CrescentButton GetCheckButton()
@@ -187,26 +236,42 @@ namespace Crescent.UI
             {
                 Content = "Check",
                 Width = 85,
-                Margin = new Thickness(10, 0, 0, 0)
+                HorizontalAlignment = HorizontalAlignment.Center
             };
 
             checkButton.onClick += async () =>
             {
-                await modData.CheckForUpdateAsync(pluginData.API.Name);
-                RefreshMod();
+                try
+                {
+                    checkButton.IsEnabled = false;
+                    await modData.CheckForUpdateAsync(pluginData.API.Name);
+                    RefreshMod();
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception.ToString());
+                }
+                finally
+                {
+                    checkButton.IsEnabled = true;
+                }
             };
-                
+
             return checkButton;
         }
 
         public CrescentButton GetUpdateButton()
         {
+            string cleanLatestVersion = (modData.LatestVersion ?? string.Empty).Trim().TrimStart('v', 'V');
             CrescentButton updateButton = new(ButtonStyle.Translucent)
             {
                 Content = "Update",
                 Width = 85,
-                Margin = new Thickness(10, 0, 0, 0)
+                HorizontalAlignment = HorizontalAlignment.Center
             };
+
+            if (!string.IsNullOrEmpty(cleanLatestVersion))
+                ToolTip.SetTip(updateButton, $"Update to v{cleanLatestVersion}");
 
             updateButton.onClick += async () =>
             {
@@ -220,36 +285,20 @@ namespace Crescent.UI
                         if (!updateDialog.UpdateConfirmed) return;
                     }
 
-                    bool isUpdating = true;
-                    Task animationTask = Task.Run(async () =>
-                    {
-                        int count = 0;
-                        while (isUpdating)
-                        {
-                            count = (count % 3) + 1;
-                            string dots = new('.', count);
+                    updateButton.IsEnabled = false;
+                    updateButton.Content = "...";
 
-                            await Dispatcher.UIThread.InvokeAsync(() => updateButton.Content = "Checking" + dots);
-                            await Task.Delay(250);
-                        }
-                    });
-
-                    try
-                    {
-                        await ModInteractionUtils.UpdateAsync(pluginData, modData);
-                    }
-                    finally
-                    {
-                        isUpdating = false;
-                        await animationTask;
-                        updateButton.Content = "Updated";
-                    }
-
-                    RefreshMod();
+                    await ModInteractionUtils.UpdateAsync(pluginData, modData);
+                    Dispatcher.UIThread.Post(() => modsTab.Refresh());
                 }
                 catch (Exception exception)
                 {
                     Logger.Error(exception.ToString());
+                }
+                finally
+                {
+                    updateButton.IsEnabled = true;
+                    updateButton.Content = "Update";
                 }
             };
 
@@ -267,9 +316,22 @@ namespace Crescent.UI
 
             manualButton.onClick += async () =>
             {
-                await ModInteractionUtils.ToggleManualInstallAsync(pluginData, modData);
-                manualButton.customColor = modData.isManual ? Colors.Red : Colors.Green;
-                modsTab.RenderMods();
+                try
+                {
+                    if (!manualButton.IsEnabled) return;
+                    manualButton.IsEnabled = false;
+
+                    await ModInteractionUtils.ToggleManualInstallAsync(pluginData, modData);
+                    Dispatcher.UIThread.Post(() => modsTab.RenderMods());
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception.ToString());
+                }
+                finally
+                {
+                    manualButton.IsEnabled = true;
+                }
             };
 
             return manualButton;

@@ -8,6 +8,8 @@ namespace Crescent.UI
 {
     public class ProgressDialog : Dialog
     {
+        public const double DialogFixedWidth = 380;
+
         public TextBlock directoryTextBlock;
         public TextBlock statusTextBlock;
         public ProgressBar progressBar;
@@ -15,7 +17,10 @@ namespace Crescent.UI
         public ProgressDialog()
         {
             Title = "Deploy Mods";
-            SizeToContent = SizeToContent.WidthAndHeight;
+            Width = DialogFixedWidth;
+            MinWidth = DialogFixedWidth;
+            MaxWidth = DialogFixedWidth;
+            SizeToContent = SizeToContent.Height;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             CanResize = false;
             Background = new LinearGradientBrush
@@ -34,7 +39,7 @@ namespace Crescent.UI
             StackPanel mainPanel = new()
             {
                 Margin = new Thickness(20),
-                Spacing = 15,
+                Spacing = 12,
                 VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
@@ -42,51 +47,67 @@ namespace Crescent.UI
             TextBlock titleTextBlock = new()
             {
                 Text = "Deploying...",
-                FontSize = 20,
+                FontSize = 18,
                 FontWeight = FontWeight.Bold,
                 Foreground = Brushes.White,
                 TextAlignment = TextAlignment.Center
             };
-            
+
             progressBar = new()
             {
-                Height = 30,
+                Height = 8,
                 Minimum = 0,
                 Maximum = 100,
                 Value = 0,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 Foreground = Brushes.CornflowerBlue
             };
-            
+
             statusTextBlock = new()
             {
                 Text = "Initialising...",
-                FontSize = 14,
+                FontSize = 13,
                 Foreground = Brushes.LightGray,
-                TextAlignment = TextAlignment.Center
+                TextAlignment = TextAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
-            
+
             directoryTextBlock = new()
             {
-                Text = "",
-                FontSize = 12,
+                Text = string.Empty,
+                FontSize = 11,
                 Foreground = Brushes.Gray,
-                TextWrapping = TextWrapping.Wrap,
-                TextAlignment = TextAlignment.Center
+                TextAlignment = TextAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                HorizontalAlignment = HorizontalAlignment.Stretch
             };
-            
+
             mainPanel.Children.Add(titleTextBlock);
             mainPanel.Children.Add(progressBar);
             mainPanel.Children.Add(statusTextBlock);
             mainPanel.Children.Add(directoryTextBlock);
             Content = mainPanel;
+
+            Opened += (_, _) =>
+            {
+                if (ToastManager.IsInitialized) Hide();
+            };
+
+            Closed += (_, _) => ToastManager.OnProgressDialogClosed();
         }
 
         public void UpdateProgress(double current, double total, string modName, string targetDirectory)
         {
+            if (ToastManager.IsInitialized)
+            {
+                if (IsVisible) Hide();
+                ToastManager.UpdateProgress(current, total, modName, targetDirectory);
+                return;
+            }
+
             double percentage = total > 0 ? current / total * 100 : 0;
             progressBar.Value = percentage;
-            
             statusTextBlock.Text = $"Deploying: {modName} ({current}/{total})";
             directoryTextBlock.Text = $"Target: {targetDirectory}";
         }

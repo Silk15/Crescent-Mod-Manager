@@ -39,43 +39,43 @@ namespace Crescent.UI
 
         public StackPanel GetMainLayout()
         {
-            StackPanel mainPanel = new()
+            StackPanel mainPanel = new StackPanel
             {
                 Margin = new Thickness(20),
                 Spacing = 15,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            statusBlock = new()
+            statusBlock = new TextBlock
             {
                 Text = "Initialising download...",
                 FontSize = 20,
                 FontWeight = FontWeight.Bold,
                 TextWrapping = TextWrapping.Wrap,
-                TextAlignment = TextAlignment.Center,
+                TextAlignment = TextAlignment.Center
             };
 
-            progressBar = new()
+            progressBar = new ProgressBar
             {
                 Height = 30,
                 IsIndeterminate = true,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                Margin = new(0, 0, 10, 0),
+                Margin = new Thickness(0, 0, 10, 0),
                 Foreground = Brushes.CornflowerBlue
             };
 
-            detailsPanel = new()
+            detailsPanel = new StackPanel
             {
                 Spacing = 8
             };
 
-            ScrollViewer detailsScrollViewer = new()
+            ScrollViewer detailsScrollViewer = new ScrollViewer
             {
                 Height = 220,
                 Content = detailsPanel,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
-            Border border = new()
+            Border border = new Border
             {
                 Background = Colors.MainPanelEnd,
                 CornerRadius = new CornerRadius(6),
@@ -84,7 +84,7 @@ namespace Crescent.UI
 
             border.Child = detailsScrollViewer;
 
-            Grid grid = new();
+            Grid grid = new Grid();
 
             closeButton = GetCloseButton();
             grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
@@ -104,13 +104,13 @@ namespace Crescent.UI
 
         public CrescentButton GetCloseButton()
         {
-            CrescentButton button = new(ButtonStyle.Translucent)
+            CrescentButton button = new CrescentButton(ButtonStyle.Translucent)
             {
                 Content = "Close",
                 Width = 90,
                 Height = 30,
                 HorizontalAlignment = HorizontalAlignment.Center,
-                Padding = new(10, 0, 0, 0)
+                Padding = new Thickness(10, 0, 0, 0)
             };
 
             button.onClick += () => Close();
@@ -124,87 +124,88 @@ namespace Crescent.UI
                 try
                 {
                     Match match = Regex.Match(modPageUrl, @"nexusmods\.com/([^/]+)/mods/(\d+)", RegexOptions.IgnoreCase);
-                    if (!match.Success)
-                    {
-                        await SetStatusAsync("Invalid Nexus Mods Url :(", false);
-                        return;
-                    }
+                    if (!match.Success) return;
 
                     string gameDomain = match.Groups[1].Value;
                     string nexusId = match.Groups[2].Value;
 
-                    JObject? modDetails = await NexusUtils.GetModDetailsJsonAsync(gameDomain, nexusId);
+                    JObject? modDetails = null;
+                    Task<JObject?> detailsTask = NexusUtils.GetModDetailsJsonAsync(gameDomain, nexusId);
+                    Task delayDetailsTask = Task.Delay(5000);
+                    Task completedDetailsTask = await Task.WhenAny(detailsTask, delayDetailsTask);
+                    if (completedDetailsTask == detailsTask) modDetails = await detailsTask;
+
                     string modName = modDetails?["name"]?.ToString() ?? nexusId;
 
-                    await SetStatusAsync($"Fetching mod data for: {modName}", true);
-                    JObject? modFiles = await NexusUtils.GetModFilesJsonAsync(gameDomain, nexusId);
-                    if (modFiles == null)
-                    {
-                        await SetStatusAsync("Failed to retrieve mod files.", false);
-                        return;
-                    }
+                    await SetStatusAsync($"Fetching requirements for: {modName}", true);
 
-                    JArray? filesArray = modFiles["files"] as JArray;
-                    if (filesArray == null || filesArray.Count == 0)
-                    {
-                        await SetStatusAsync("No files found for this mod.", false);
-                        return;
-                    }
+                    List<RequirementNode> requirementTree = await BuildRequirementTreeAsync(gameDomain, nexusId, pluginData, 0, null, true);
+                    List<RequirementNode> flatQueue = FlattenTree(requirementTree);
 
-                    JToken? targetFile = GetTargetFile(filesArray);
-                    if (targetFile == null)
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        await SetStatusAsync("No valid files found.", false);
-                        return;
-                    }
-
-                    string fileId = targetFile["file_id"]?.ToString() ?? string.Empty;
-                    string fileName = targetFile["file_name"]?.ToString() ?? $"mod_{nexusId}.zip";
-                    List<string> downloadQueueIds = await CollectRequirementIdsAsync(gameDomain, nexusId, pluginData);
-
-                    for (int queueIndex = 0; queueIndex < downloadQueueIds.Count; queueIndex++)
-                    {
-                        string currentNexusId = downloadQueueIds[queueIndex];
-                        string currentModName = currentNexusId;
-                        if (string.Equals(currentNexusId, nexusId, StringComparison.OrdinalIgnoreCase)) currentModName = modName;
-                        else
+                        statusBlock.Text = $"Ready to download ({flatQueue.Count} items)";
+                        if (detailsPanel != null)
                         {
-                            JObject? reqDetails = await NexusUtils.GetModDetailsJsonAsync(gameDomain, currentNexusId);
-                            currentModName = reqDetails?["name"]?.ToString() ?? currentNexusId;
-                        }
-
-                        await AddDetailEntryAsync(modName, currentModName, queueIndex + 1, downloadQueueIds.Count);
-
-                        string currentFileId = fileId;
-                        string currentFileName = fileName;
-
-                        if (currentNexusId != nexusId)
-                        {
-                            JObject? requiredFiles = await NexusUtils.GetModFilesJsonAsync(gameDomain, currentNexusId);
-                            if (requiredFiles != null)
+                            detailsPanel.Children.Clear();
+                            for (int i = 0; i < flatQueue.Count; i++)
                             {
-                                JArray? reqFilesArray = requiredFiles["files"] as JArray;
-                                JToken? reqTargetFile = GetTargetFile(reqFilesArray);
-                                if (reqTargetFile != null)
+                                RequirementNode node = flatQueue[i];
+                                detailsPanel.Children.Add(new TextBlock
                                 {
-                                    currentFileId = reqTargetFile["file_id"]?.ToString() ?? string.Empty;
-                                    currentFileName = reqTargetFile["file_name"]?.ToString() ?? $"mod_{currentNexusId}.zip";
-                                }
+                                    Text = new string(' ', node.Depth * 4) + $"• {node.ModName}",
+                                    Foreground = Brushes.LightGray,
+                                    FontSize = 12
+                                });
                             }
                         }
+                    });
 
-                        if (!string.IsNullOrEmpty(currentFileId))
+                    await Task.Delay(1500);
+
+                    for (int queueIndex = 0; queueIndex < flatQueue.Count; queueIndex++)
+                    {
+                        RequirementNode currentNode = flatQueue[queueIndex];
+                        await SetStatusAsync($"Downloading {modName} ({queueIndex + 1}/{flatQueue.Count})", false);
+
+                        JObject? modFiles = null;
+                        Task<JObject?> filesTask = NexusUtils.GetModFilesJsonAsync(gameDomain, currentNode.NexusId);
+                        Task delayFilesTask = Task.Delay(5000);
+                        Task completedFilesTask = await Task.WhenAny(filesTask, delayFilesTask);
+                        if (completedFilesTask == filesTask) modFiles = await filesTask;
+
+                        if (modFiles != null)
                         {
-                            string downloadUrl = await NexusUtils.GetDownloadUrlAsync(gameDomain, currentNexusId, currentFileId);
-                            if (!string.IsNullOrEmpty(downloadUrl))
+                            JArray? filesArray = modFiles["files"] as JArray;
+                            JToken? targetFile = GetTargetFile(filesArray);
+                            if (targetFile != null)
                             {
-                                string? savedPath = await NexusUtils.DownloadFileAsync(downloadUrl, pluginData.StagingPath, currentFileName);
-                                if (!string.IsNullOrEmpty(savedPath))
+                                string fileId = targetFile["file_id"]?.ToString() ?? string.Empty;
+                                string fileName = targetFile["file_name"]?.ToString() ?? $"mod_{currentNode.NexusId}.zip";
+
+                                if (!string.IsNullOrEmpty(fileId))
                                 {
-                                    ModData newModData = new(pluginData, Path.GetFileName(savedPath), savedPath);
-                                    newModData.requirementIds = new List<string>(downloadQueueIds);
-                                    pluginData.installedMods.Add(newModData);
-                                    pluginData.OnModLoaded(newModData);
+                                    string? downloadUrl = null;
+                                    Task<string> urlTask = NexusUtils.GetDownloadUrlAsync(gameDomain, currentNode.NexusId, fileId);
+                                    Task delayUrlTask = Task.Delay(5000);
+                                    Task completedUrlTask = await Task.WhenAny(urlTask, delayUrlTask);
+                                    if (completedUrlTask == urlTask) downloadUrl = await urlTask;
+
+                                    if (!string.IsNullOrEmpty(downloadUrl))
+                                    {
+                                        string? savedPath = null;
+                                        Task<string?> downloadTask = NexusUtils.DownloadFileAsync(downloadUrl, pluginData.StagingPath, fileName);
+                                        Task delayDownloadTask = Task.Delay(15000);
+                                        Task completedDownloadTask = await Task.WhenAny(downloadTask, delayDownloadTask);
+                                        if (completedDownloadTask == downloadTask) savedPath = await downloadTask;
+
+                                        if (!string.IsNullOrEmpty(savedPath))
+                                        {
+                                            ModData newModData = new ModData(pluginData, Path.GetFileName(savedPath), savedPath);
+                                            pluginData.installedMods.Add(newModData);
+                                            pluginData.OnModLoaded(newModData);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -216,8 +217,8 @@ namespace Crescent.UI
 
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        statusBlock!.Text = "All downloads completed successfully!";
-                        progressBar!.IsIndeterminate = false;
+                        statusBlock.Text = "All downloads completed successfully!";
+                        progressBar.IsIndeterminate = false;
                         progressBar.Value = 100;
                         DownloadSuccess = true;
                     });
@@ -228,6 +229,75 @@ namespace Crescent.UI
                     await SetStatusAsync("An error occurred during download.", false);
                 }
             });
+        }
+
+        private async Task<List<RequirementNode>> BuildRequirementTreeAsync(string gameDomain, string nexusId, PluginData pluginData, int depth, HashSet<string>? visited, bool isRoot)
+        {
+            if (visited == null) visited = new HashSet<string>();
+
+            List<RequirementNode> nodes = new List<RequirementNode>();
+            if (visited.Contains(nexusId)) return nodes;
+            visited.Add(nexusId);
+
+            if (!isRoot)
+            {
+                bool isInstalled = false;
+                for (int i = 0; i < pluginData.installedMods.Count; i++)
+                {
+                    if (string.Equals(pluginData.installedMods[i].url.nexusId, nexusId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        isInstalled = true;
+                        break;
+                    }
+                }
+                if (isInstalled) return nodes;
+            }
+
+            JObject? modDetails = null;
+            Task<JObject?> detailsTask = NexusUtils.GetModDetailsJsonAsync(gameDomain, nexusId);
+            Task delayDetailsTask = Task.Delay(5000);
+            Task completedDetailsTask = await Task.WhenAny(detailsTask, delayDetailsTask);
+            if (completedDetailsTask == detailsTask) modDetails = await detailsTask;
+
+            string modName = modDetails?["name"]?.ToString() ?? nexusId;
+
+            RequirementNode currentNode = new RequirementNode
+            {
+                NexusId = nexusId,
+                ModName = modName,
+                Depth = depth
+            };
+
+            List<string>? reqIds = null;
+            Task<List<string>> reqTask = NexusUtils.GetRequirementIdsAsync(gameDomain, nexusId);
+            Task delayReqTask = Task.Delay(5000);
+            Task completedReqTask = await Task.WhenAny(reqTask, delayReqTask);
+            if (completedReqTask == reqTask) reqIds = await reqTask;
+
+            if (reqIds != null)
+            {
+                for (int i = 0; i < reqIds.Count; i++)
+                {
+                    List<RequirementNode> subNodes = await BuildRequirementTreeAsync(gameDomain, reqIds[i], pluginData, depth + 1, visited, false);
+                    for (int j = 0; j < subNodes.Count; j++) currentNode.Children.Add(subNodes[j]);
+                }
+            }
+
+            nodes.Add(currentNode);
+            return nodes;
+        }
+
+        private List<RequirementNode> FlattenTree(List<RequirementNode> roots)
+        {
+            List<RequirementNode> result = new List<RequirementNode>();
+            for (int i = 0; i < roots.Count; i++) FlattenRecursive(roots[i], result);
+            return result;
+        }
+
+        private void FlattenRecursive(RequirementNode node, List<RequirementNode> list)
+        {
+            for (int i = 0; i < node.Children.Count; i++) FlattenRecursive(node.Children[i], list);
+            if (!list.Any(n => string.Equals(n.NexusId, node.NexusId, StringComparison.OrdinalIgnoreCase))) list.Add(node);
         }
 
         private JToken? GetTargetFile(JArray? filesArray)
@@ -252,40 +322,11 @@ namespace Crescent.UI
                 JToken? idToken = file["file_id"];
                 if (idToken != null && idToken.Type != JTokenType.Null)
                 {
-                    if (long.TryParse(idToken.ToString(), out long idValue))
-                        return idValue;
+                    if (long.TryParse(idToken.ToString(), out long idValue)) return idValue;
                 }
 
                 return 0;
             }
-        }
-
-        private async Task<List<string>> CollectRequirementIdsAsync(string gameDomain, string nexusId, PluginData pluginData)
-        {
-            List<string> downloadQueueIds = new()
-            {
-                nexusId
-            };
-            
-            List<string> requirementIds = await NexusUtils.GetRequirementIdsAsync(gameDomain, nexusId);
-            for (int i = 0; i < requirementIds.Count; i++)
-            {
-                string reqId = requirementIds[i];
-                bool isInstalled = false;
-                for (int installedIndex = 0; installedIndex < pluginData.installedMods.Count; installedIndex++)
-                {
-                    ModData installedMod = pluginData.installedMods[installedIndex];
-                    if (string.Equals(installedMod.url.nexusId, reqId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isInstalled = true;
-                        break;
-                    }
-                }
-
-                if (!isInstalled && !downloadQueueIds.Contains(reqId)) downloadQueueIds.Add(reqId);
-            }
-
-            return downloadQueueIds;
         }
 
         private async Task SetStatusAsync(string message, bool isIndeterminate)
@@ -296,22 +337,13 @@ namespace Crescent.UI
                 if (progressBar != null) progressBar.IsIndeterminate = isIndeterminate;
             });
         }
+    }
 
-        private async Task AddDetailEntryAsync(string modName, string currentModName, int current, int total)
-        {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                if (statusBlock != null) statusBlock.Text = $"Downloading {modName} ({current}/{total})";
-                if (detailsPanel != null)
-                {
-                    detailsPanel.Children.Add(new TextBlock
-                    {
-                        Text = $"• {currentModName}",
-                        Foreground = Brushes.LightGray,
-                        FontSize = 12
-                    });
-                }
-            });
-        }
+    public class RequirementNode
+    {
+        public string NexusId { get; set; } = string.Empty;
+        public string ModName { get; set; } = string.Empty;
+        public int Depth { get; set; }
+        public List<RequirementNode> Children { get; set; } = new List<RequirementNode>();
     }
 }

@@ -19,7 +19,6 @@ namespace Crescent.UI
 
         private Process? activeProcess;
 
-        public Tab Tab => Tab.Play;
         public int Order => 0;
 
         public CrescentButton GetButton() => new(ButtonStyle.Translucent)

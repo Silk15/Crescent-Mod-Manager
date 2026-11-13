@@ -10,10 +10,12 @@ namespace Crescent.UI
     {
         public static ContextMenu Get(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
-            ContextMenu contextMenu = new();
-            contextMenu.Background = Colors.MainGradient;
-            contextMenu.CornerRadius = new(8);
-            contextMenu.ClipToBounds = true;
+            ContextMenu contextMenu = new()
+            {
+                Background = Colors.MainGradient,
+                CornerRadius = new(8),
+                ClipToBounds = true
+            };
 
             contextMenu.Items.Add(GetNexusOpenButton(modData));
             contextMenu.Items.Add(GetOpenFilesButton(modData));
@@ -44,7 +46,7 @@ namespace Crescent.UI
         }
 
         #region Buttons
-        
+
         public static MenuItem GetNexusOpenButton(ModData modData)
         {
             MenuItem nexusMenuItem = new()
@@ -58,14 +60,14 @@ namespace Crescent.UI
         }
 
         public static MenuItem GetOpenFilesButton(ModData modData)
-        { 
+        {
             MenuItem openFolderMenuItem = new()
             {
                 Header = "Open Folder",
                 CornerRadius = new CornerRadius(8),
                 Margin = new(10, 0, 10, 0)
             };
-            
+
             openFolderMenuItem.Click += (_, _) => modData.filePath.TryOpen();
             return openFolderMenuItem;
         }
@@ -80,9 +82,9 @@ namespace Crescent.UI
             };
 
             List<ProfileData> allProfiles = pluginData.Profiles;
-            for (int i = 0; i < allProfiles.Count; i++)
+            for (int index = 0; index < allProfiles.Count; index++)
             {
-                ProfileData profile = allProfiles[i];
+                ProfileData profile = allProfiles[index];
                 bool isEnabledInProfile = profile.IsModEnabled(modData);
                 MenuItem profileItem = new()
                 {
@@ -98,48 +100,50 @@ namespace Crescent.UI
                     await pluginData.SaveAsync();
                     modsTab.RenderMods();
                 };
-                
+
                 profileMenu.Items.Add(profileItem);
-                profileItem.Margin = new(10, i == 0 ? 5 : 0, 10, i == allProfiles.Count - 1 ? 5 : 0);
+                profileItem.Margin = new(10, index == 0 ? 5 : 0, 10, index == allProfiles.Count - 1 ? 5 : 0);
             }
-            
+
             return profileMenu;
         }
 
         public static MenuItem GetUpdateButton(PluginData pluginData, ModData modData, ModsTab modsTab)
         {
+            string cleanLatestVersion = (modData.LatestVersion ?? string.Empty).Trim().TrimStart('v', 'V');
+            string versionSuffix = modData.UpdateAvailable && !string.IsNullOrEmpty(cleanLatestVersion)
+                ? $" (v{cleanLatestVersion})"
+                : string.Empty;
+
             MenuItem updateButton = new()
             {
-                Header = "Update",
+                Header = $"Update{versionSuffix}",
                 CornerRadius = new CornerRadius(8),
                 Margin = new(10, 0, 10, 0)
             };
 
-            RenderedMod? renderedMod = modsTab.renderedMods.Find(item => item.modData == modData);
             updateButton.Click += async (_, _) =>
             {
-                if (modData.UpdateAvailable)
+                if (!modData.UpdateAvailable) return;
+                try
                 {
-                    try
+                    Window? window = TopLevel.GetTopLevel(modsTab) as Window;
+                    if (window != null)
                     {
-                        Window? window = TopLevel.GetTopLevel(modsTab) as Window;
-                        if (window != null)
-                        {
-                            ModUpdateDialog updateDialog = new(modData);
-                            await updateDialog.ShowDialog(window);
-                            if (!updateDialog.UpdateConfirmed) return;
-                        }
+                        ModUpdateDialog updateDialog = new(modData);
+                        await updateDialog.ShowDialog(window);
+                        if (!updateDialog.UpdateConfirmed) return;
+                    }
 
-                        await ModInteractionUtils.UpdateAsync(pluginData, modData);
-                        if (renderedMod != null) renderedMod.RefreshMod();
-                    }
-                    catch (Exception exception)
-                    {
-                        Logger.Error(exception.ToString());
-                    }
+                    await ModInteractionUtils.UpdateAsync(pluginData, modData);
+                    modsTab.Refresh();
+                }
+                catch (Exception exception)
+                {
+                    Logger.Error(exception.ToString());
                 }
             };
-            
+
             return updateButton;
         }
 
@@ -158,7 +162,7 @@ namespace Crescent.UI
                 await modData.CheckForUpdateAsync(pluginData.API.Name);
                 if (renderedMod != null) renderedMod.RefreshMod();
             };
-            
+
             return checkButton;
         }
 
@@ -170,25 +174,26 @@ namespace Crescent.UI
                 CornerRadius = new CornerRadius(8),
                 Margin = new(10, 0, 10, 0)
             };
-            
+
             renameButton.Click += async (_, _) =>
             {
                 Window? parentWindow = TopLevel.GetTopLevel(modsTab) as Window;
                 if (parentWindow != null)
                 {
-                    string oldName = modData.displayName;
-                    ConfirmationDialog renameDialog = new("Rename Mod", "Enter new name for mod folder/archive:", true, modData.displayName);
+                    string oldName = modData.DisplayName;
+                    ConfirmationDialog renameDialog = new("Rename Mod", "Enter new name for mod:", true, oldName);
                     await renameDialog.ShowDialog(parentWindow);
                     string newName = renameDialog.InputText;
-                    
+
                     if (!string.IsNullOrEmpty(newName) && newName != oldName)
                     {
                         modData.displayName = newName;
                         await pluginData.SaveAsync();
+                        modsTab.RenderMods();
                     }
                 }
             };
-            
+
             return renameButton;
         }
 
@@ -200,20 +205,22 @@ namespace Crescent.UI
                 CornerRadius = new CornerRadius(8),
                 Margin = new(10, 0, 10, 5)
             };
-            
+
             deleteButton.Click += async (_, _) =>
             {
-                pluginData.WithdrawMod(modData);
-                pluginData.installedMods.Remove(modData);
+                string deletedDisplayName = modData.DisplayName.Cleaned();
+                ModInteractionUtils.WithdrawModFiles(pluginData, modData);
                 modData.DeleteFiles(pluginData.StagingPath);
-                
+                pluginData.RemoveMod(modData);
+
                 await pluginData.SaveAsync();
-                modsTab.RenderMods();
+                modsTab.Refresh();
+                ToastManager.Show("Mod Deleted", $"Removed {deletedDisplayName} and all staging files.", ToastType.Info, 3500, pluginData.Name);
             };
-            
+
             return deleteButton;
         }
-        
+
         #endregion
     }
 }

@@ -13,11 +13,18 @@ namespace Crescent.Plugins
         public static readonly Regex ModNameRegex = new(@"[-_]\d{4,}(-\d+)*");
         public static readonly Regex ModCleanRegex = new(@"\d{4}-\d{2}-\d{2}T.*$");
 
+        public static readonly string[] ArchiveExtensions = new[]
+        {
+            ".zip",
+            ".rar",
+            ".7z"
+        };
+
         public string filePath;
         public string modName;
         public string displayName;
         public string version;
-        
+
         public bool isDeployed;
         public bool isManual;
         public List<string> ownedFiles = new();
@@ -25,7 +32,7 @@ namespace Crescent.Plugins
 
         public Update update = new();
         public Url url;
-        
+
         [JsonIgnore] public string DisplayName
         {
             get
@@ -35,70 +42,83 @@ namespace Crescent.Plugins
                 clean = ModCleanRegex.Replace(clean, string.Empty);
 
                 clean = clean.Replace('_', ' ').Replace('-', ' ');
-                clean = clean.Replace(".7z", string.Empty);
-                clean = clean.Replace(".zip", string.Empty);
-                clean = clean.Replace(".rar", string.Empty);
+                clean = clean.Replace(".7z", string.Empty, StringComparison.OrdinalIgnoreCase);
+                clean = clean.Replace(".zip", string.Empty, StringComparison.OrdinalIgnoreCase);
+                clean = clean.Replace(".rar", string.Empty, StringComparison.OrdinalIgnoreCase);
                 clean = clean.Trim();
                 if (string.IsNullOrWhiteSpace(clean)) displayName = modName;
-                
+
                 return displayName = clean;
             }
         }
-        [JsonIgnore] public string LatestVersion 
-        { 
-            get => update.latestVersion; 
-            set => update.latestVersion = value; 
+        [JsonIgnore] public string LatestVersion
+        {
+            get => update.latestVersion;
+            set => update.latestVersion = value;
         }
-        [JsonIgnore] public string LatestFileId 
-        { 
-            get => update.latestFileId; 
-            set => update.latestFileId = value; 
+        [JsonIgnore] public string LatestFileId
+        {
+            get => update.latestFileId;
+            set => update.latestFileId = value;
         }
-        [JsonIgnore] public string LatestFileDescription 
-        { 
-            get => update.latestFileDescription; 
-            set => update.latestFileDescription = value; 
+        [JsonIgnore] public string LatestFileDescription
+        {
+            get => update.latestFileDescription;
+            set => update.latestFileDescription = value;
         }
-        [JsonIgnore] public string LatestChangelog 
-        { 
-            get => update.latestChangelog; 
-            set => update.latestChangelog = value; 
+        [JsonIgnore] public string LatestChangelog
+        {
+            get => update.latestChangelog;
+            set => update.latestChangelog = value;
         }
-        [JsonIgnore] public int LatestDownloads 
-        { 
-            get => update.latestDownloads; 
-            set => update.latestDownloads = value; 
+        [JsonIgnore] public int LatestDownloads
+        {
+            get => update.latestDownloads;
+            set => update.latestDownloads = value;
         }
-        [JsonIgnore] public string LatestPublishDate 
-        { 
-            get => update.latestPublishDate; 
-            set => update.latestPublishDate = value; 
+        [JsonIgnore] public string LatestPublishDate
+        {
+            get => update.latestPublishDate;
+            set => update.latestPublishDate = value;
         }
-        [JsonIgnore] public bool HasCheckedForUpdate 
-        { 
-            get => update.hasCheckedForUpdate; 
-            set => update.hasCheckedForUpdate = value; 
+        [JsonIgnore] public bool HasCheckedForUpdate
+        {
+            get => update.hasCheckedForUpdate;
+            set => update.hasCheckedForUpdate = value;
         }
-        [JsonIgnore] public bool UpdateAvailable 
-        { 
-            get => update.updateAvailable; 
-            set => update.updateAvailable = value; 
+        [JsonIgnore] public bool UpdateAvailable
+        {
+            get => update.updateAvailable;
+            set => update.updateAvailable = value;
         }
-        [JsonIgnore] public bool HasValidNexusData 
-        { 
-            get => update.hasValidNexusData; 
-            set => update.hasValidNexusData = value; 
+        [JsonIgnore] public bool HasValidNexusData
+        {
+            get => update.hasValidNexusData;
+            set => update.hasValidNexusData = value;
         }
-        
+
         public ModData() { }
 
         public ModData(PluginData pluginData, string modName, string filePath)
         {
             this.filePath = filePath;
             this.modName = modName;
-            
+
             isManual = pluginData.IsCoreMod(this) ? true : filePath.Contains("Manual", StringComparison.OrdinalIgnoreCase);
             url = GetUrl(pluginData.API.BaseUrl);
+        }
+
+        public static string StripArchiveExtension(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            for (int index = 0; index < ArchiveExtensions.Length; index++)
+            {
+                string extension = ArchiveExtensions[index];
+                if (value.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                    return value.Substring(0, value.Length - extension.Length);
+            }
+
+            return value;
         }
 
         public Url GetUrl(string baseUrl)
@@ -122,7 +142,7 @@ namespace Crescent.Plugins
             else url = new(baseUrl, string.Empty);
             return url;
         }
-   
+
         public async Task LoadRequirementsAsync(string gameDomain)
         {
             if (string.IsNullOrEmpty(url.nexusId)) return;
@@ -130,23 +150,17 @@ namespace Crescent.Plugins
         }
 
         #region File Management
-        
+
         public void UpdateFiles(JArray filesArray)
         {
-            JToken targetFile = null;
-            foreach (JToken fileToken in filesArray)
-            {
-                int categoryId = fileToken["category_id"]?.Value<int>() ?? 0;
-                if (categoryId == 1)
-                {
-                    targetFile = fileToken;
-                    break;
-                }
-            }
+            IEnumerable<JToken> mainFiles = filesArray.Where(fileToken => (fileToken["category_id"]?.Value<int>() ?? 0) == 1);
+            JToken? targetFile = mainFiles.OrderByDescending(GetFileSortValue).FirstOrDefault();
 
-            if (targetFile == null) targetFile = filesArray[0];
+            if (targetFile == null) targetFile = filesArray.OrderByDescending(GetFileSortValue).FirstOrDefault() ?? filesArray[0];
 
-            update.latestVersion = targetFile["version"]?.ToString() ?? string.Empty;
+            update.latestVersion = NexusUtils.TryCleanVersion(targetFile["version"]?.ToString() ?? string.Empty);
+            if (string.IsNullOrEmpty(update.latestVersion)) update.latestVersion = targetFile["version"]?.ToString() ?? string.Empty;
+
             update.latestFileId = targetFile["file_id"]?.ToString() ?? string.Empty;
             update.latestFileDescription = targetFile["description"]?.ToString() ?? string.Empty;
             update.latestChangelog = targetFile["changelog_html"]?.ToString() ?? targetFile["changelog"]?.ToString() ?? string.Empty;
@@ -154,68 +168,121 @@ namespace Crescent.Plugins
             update.latestPublishDate = targetFile["uploaded_time"]?.ToString() ?? string.Empty;
             update.hasValidNexusData = true;
 
-            string cleanLocalVersion = version.Trim().ToLower().TrimStart('v');
+            string cleanLocalVersion = (version ?? string.Empty).Trim().ToLower().TrimStart('v');
             string cleanLatestVersion = update.latestVersion.Trim().ToLower().TrimStart('v');
             update.updateAvailable = !string.IsNullOrEmpty(cleanLocalVersion) && !string.IsNullOrEmpty(cleanLatestVersion) && cleanLocalVersion != cleanLatestVersion;
         }
 
+        private static long GetFileSortValue(JToken fileToken)
+        {
+            JToken? timeToken = fileToken["uploaded_timestamp"] ?? fileToken["uploaded_time"];
+            if (timeToken != null && timeToken.Type != JTokenType.Null)
+            {
+                if (timeToken.Type == JTokenType.Date) return timeToken.Value<DateTime>().Ticks;
+                if (long.TryParse(timeToken.ToString(), out long timestampValue)) return timestampValue;
+                if (DateTime.TryParse(timeToken.ToString(), out DateTime parsedDate)) return parsedDate.Ticks;
+            }
+
+            JToken? idToken = fileToken["file_id"];
+            if (idToken != null && idToken.Type != JTokenType.Null && long.TryParse(idToken.ToString(), out long idValue))
+                return idValue;
+
+            return 0;
+        }
+
         public void DeleteFiles(string stagingPath)
         {
-            string modName = Path.GetFileName(filePath);
-            string[] possibleExtensions = new[]
+            if (string.IsNullOrEmpty(stagingPath)) return;
+
+            HashSet<string> candidateNames = new(StringComparer.OrdinalIgnoreCase);
+            if (!string.IsNullOrEmpty(modName))
             {
-                ".zip",
-                ".rar",
-                ".7z"
-            };
-            
-            Logger.Log($"Deleting {modName}...");
-            for (int extension = 0; extension < possibleExtensions.Length; extension++)
-            {
-                string unExtractedFilePath = Path.Combine(stagingPath, Path.GetFileNameWithoutExtension(filePath) + possibleExtensions[extension]);
-                if (File.Exists(unExtractedFilePath))
-                {
-                    string manualArchiveName = Path.GetFileName(unExtractedFilePath);
-                    Logger.Log($"  Deleted un-extracted archive: {manualArchiveName}");
-                    File.Delete(unExtractedFilePath);
-                }
+                candidateNames.Add(modName);
+                candidateNames.Add(StripArchiveExtension(modName));
             }
-            
-            if (Directory.Exists(filePath))
+
+            if (!string.IsNullOrEmpty(filePath))
             {
-                Logger.Log($"  Deleted manual mod: {modName}");
-                Directory.Delete(filePath, true);
-                if (isManual)
+                string fileNameFromPath = Path.GetFileName(filePath);
+                if (!string.IsNullOrEmpty(fileNameFromPath))
                 {
-                    for (int extension = 0; extension < possibleExtensions.Length; extension++)
-                    {
-                        string manualFilePath = filePath + possibleExtensions[extension];
-                        if (File.Exists(manualFilePath))
-                        {
-                            string manualArchiveName = Path.GetFileName(manualFilePath);
-                            Logger.Log($"  Deleted manual archive: {manualArchiveName}");
-                            File.Delete(manualFilePath);
-                        }
-                    }
+                    candidateNames.Add(fileNameFromPath);
+                    candidateNames.Add(StripArchiveExtension(fileNameFromPath));
                 }
             }
 
-            string archivePath = Path.Combine(stagingPath, PluginData.Archive);
-            if (Directory.Exists(archivePath))
+            string manualDirectory = Path.Combine(stagingPath, PluginData.Manual);
+            string archiveDirectory = Path.Combine(stagingPath, PluginData.Archive);
+            string[] searchDirectories = new[]
             {
-                for (int extension = 0; extension < possibleExtensions.Length; extension++)
+                stagingPath,
+                manualDirectory,
+                archiveDirectory
+            };
+
+            Logger.Log($"Deleting {modName}...");
+
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                TryDeleteFile(filePath);
+                TryDeleteDirectory(filePath);
+            }
+
+            foreach (string baseDirectory in searchDirectories)
+            {
+                if (!Directory.Exists(baseDirectory)) continue;
+
+                foreach (string candidate in candidateNames)
                 {
-                    string path = Path.Combine(archivePath, modName + possibleExtensions[extension]);
-                    if (File.Exists(path))
+                    if (string.IsNullOrEmpty(candidate)) continue;
+
+                    string targetPath = Path.Combine(baseDirectory, candidate);
+                    TryDeleteDirectory(targetPath);
+                    TryDeleteFile(targetPath);
+
+                    string strippedCandidate = StripArchiveExtension(candidate);
+                    for (int index = 0; index < ArchiveExtensions.Length; index++)
                     {
-                        string manualArchiveName = Path.GetFileName(path);
-                        Logger.Log($"  Deleted archive: {manualArchiveName}");
-                        File.Delete(path);
+                        string archiveCandidatePath = Path.Combine(baseDirectory, strippedCandidate + ArchiveExtensions[index]);
+                        TryDeleteFile(archiveCandidatePath);
                     }
                 }
             }
         }
-        
+
+        private static void TryDeleteFile(string path)
+        {
+            try
+            {
+                if (!File.Exists(path)) return;
+                File.SetAttributes(path, FileAttributes.Normal);
+                File.Delete(path);
+                Logger.Log($"  Deleted file: {Path.GetFileName(path)}");
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception.ToString());
+            }
+        }
+
+        private static void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (!Directory.Exists(path)) return;
+                string[] allFiles = Directory.GetFiles(path, "*.*", SearchOption.AllDirectories);
+                for (int index = 0; index < allFiles.Length; index++)
+                    File.SetAttributes(allFiles[index], FileAttributes.Normal);
+
+                Directory.Delete(path, true);
+                Logger.Log($"  Deleted directory: {Path.GetFileName(path)}");
+            }
+            catch (Exception exception)
+            {
+                Logger.Error(exception.ToString());
+            }
+        }
+
         public async Task CheckForUpdateAsync(string gameDomain)
         {
             update.hasCheckedForUpdate = true;
@@ -250,7 +317,7 @@ namespace Crescent.Plugins
                 Logger.Error(exception.ToString());
             }
         }
-        
+
         #endregion
 
         [Serializable] public class Url
@@ -264,7 +331,7 @@ namespace Crescent.Plugins
                 nexusId = id;
             }
         }
-        
+
         [Serializable] public class Update
         {
             public string latestVersion = string.Empty;

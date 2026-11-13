@@ -11,15 +11,15 @@ namespace Crescent.Plugins
         public const string Managed = "Managed";
         public const string Archive = "Archive";
         public const string Manual = "Manual";
-        
+
         public static List<PluginData> InstalledPlugins { get; set; } = new();
-        
-        [JsonProperty(Order = 8)] 
+
+        [JsonProperty(Order = 8)]
         public List<ModData> installedMods = new();
-        
+
         [JsonProperty(Order = 6)] public List<ProfileData> profiles = new();
         [JsonProperty(Order = 7)] public string selectedProfileName = "Default";
-        
+
         [JsonProperty(Order = 5)] public DeploymentState deploymentState = DeploymentState.NotDeployed;
         [JsonProperty(Order = 4)] public string deploymentStatus = "Not deployed";
         [JsonProperty(Order = 9)] public long playTime;
@@ -30,7 +30,7 @@ namespace Crescent.Plugins
 
         [NonSerialized]
         public string folderName;
-        
+
         public event Action<PluginData> onDeploymentStatusChanged;
 
         [JsonProperty(Order = 0)] public abstract string DeploymentPath { get; set; }
@@ -39,11 +39,11 @@ namespace Crescent.Plugins
 
         [JsonIgnore] public DeploymentState DeploymentState => deploymentState == DeploymentState.NotDeployed && installedMods.Any(modData => modData.isDeployed) ? installedMods.Any(modData => SelectedProfile.IsModEnabled(modData) && !modData.isDeployed) ? DeploymentState.PartiallyDeployed : DeploymentState.Deployed : deploymentState;
         [JsonIgnore] public string DeploymentStatus => deploymentStatus == "Not deployed" && installedMods.Any(modData => modData.isDeployed) ? "Deployed mods restored from configuration" : deploymentStatus;
-        
+
         [JsonIgnore] public abstract string Name { get; }
 
         [JsonIgnore] public virtual int ModCount => SelectedProfile?.mods.Count ?? 0;
-        
+
         [JsonIgnore] public ProfileData SelectedProfile
         {
             get
@@ -75,23 +75,23 @@ namespace Crescent.Plugins
                 return profiles;
             }
         }
-        
+
         [JsonIgnore] public abstract Theme Theme { get; }
         [JsonIgnore] public abstract API API { get; }
-        
+
         #region Window Functions
-        
+
         public static Func<int, int, string, string, Task>? OnProgressWindowUpdate { get; set; }
         public static Func<Task>? OnProgressWindowOpen { get; set; }
         public static Func<Task>? OnProgressWindowClose { get; set; }
-        
+
         public static Func<Dictionary<string, List<ModData>>, Task<bool>>? OnConflictResolve { get; set; }
         public static Func<string, string, Task<string>>? OnOverlapConfirm { get; set; }
 
         #endregion
 
         #region Utilities
-        
+
         public virtual async Task SaveAsync()
         {
             string directoryPath = Path.Combine(Runtime.DataPath, "Games", Name);
@@ -100,11 +100,11 @@ namespace Crescent.Plugins
             await FileManager.WriteJson(filePath, (dynamic)this);
         }
 
-        public virtual Process? Launch() => Process.Start(new ProcessStartInfo(ExePath) 
+        public virtual Process? Launch() => Process.Start(new ProcessStartInfo(ExePath)
         {
             UseShellExecute = true
         });
-        
+
         public Dictionary<string, List<ModData>> GetConflicts()
         {
             Dictionary<string, List<ModData>> files = new();
@@ -120,33 +120,63 @@ namespace Crescent.Plugins
 
             Dictionary<string, List<ModData>> conflicts = new();
             foreach (KeyValuePair<string, List<ModData>> filePair in files)
-            {
-                if (filePair.Value.Count > 1) 
+                if (filePair.Value.Count > 1)
                     conflicts[filePair.Key] = filePair.Value;
-            }
-            
+
             return conflicts;
         }
 
-        public void ReplaceModId(string oldModName, string newModName)
+        public void ReplaceModId(string oldModName, string newModName, ModData? targetMod = null)
         {
+            if (string.IsNullOrEmpty(oldModName) || string.IsNullOrEmpty(newModName)) return;
+            string strippedOldName = ModData.StripArchiveExtension(oldModName);
+            string strippedNewName = ModData.StripArchiveExtension(newModName);
+
             foreach (ProfileData profileData in profiles)
             {
-                ProfileModData? existingProfileMod = profileData.mods.Find(profileModData => string.Equals(profileModData.modName, oldModName, StringComparison.OrdinalIgnoreCase));
+                ProfileModData? existingProfileMod = profileData.mods.Find(profileModData =>
+                    string.Equals(profileModData.modName, oldModName, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(ModData.StripArchiveExtension(profileModData.modName), strippedOldName, StringComparison.OrdinalIgnoreCase));
+
                 if (existingProfileMod != null)
                 {
                     bool wasEnabled = existingProfileMod.isEnabled;
-                    profileData.mods.Remove(existingProfileMod);
+                    profileData.mods.RemoveAll(profileModData =>
+                        string.Equals(profileModData.modName, oldModName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(ModData.StripArchiveExtension(profileModData.modName), strippedOldName, StringComparison.OrdinalIgnoreCase));
 
-                    ProfileModData? newModEntry = profileData.mods.Find(profileModData => string.Equals(profileModData.modName, newModName, StringComparison.OrdinalIgnoreCase));
+                    ProfileModData? newModEntry = profileData.mods.Find(profileModData =>
+                        string.Equals(profileModData.modName, newModName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(ModData.StripArchiveExtension(profileModData.modName), strippedNewName, StringComparison.OrdinalIgnoreCase));
+
                     if (newModEntry != null) newModEntry.isEnabled = wasEnabled;
-                    else profileData.mods.Add(new ProfileModData { modName = newModName, isEnabled = wasEnabled });
+                    else profileData.mods.Add(new() { modName = newModName, isEnabled = wasEnabled });
                 }
             }
 
-            installedMods.RemoveAll(modData => string.Equals(modData.modName, oldModName, StringComparison.OrdinalIgnoreCase));
+            installedMods.RemoveAll(modData =>
+                modData != targetMod &&
+                !string.Equals(modData.modName, newModName, StringComparison.OrdinalIgnoreCase) &&
+                (string.Equals(modData.modName, oldModName, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(ModData.StripArchiveExtension(modData.modName), strippedOldName, StringComparison.OrdinalIgnoreCase)));
         }
-        
+
+        public void RemoveMod(ModData modData)
+        {
+            string strippedName = ModData.StripArchiveExtension(modData.modName);
+            installedMods.Remove(modData);
+            installedMods.RemoveAll(existing =>
+                string.Equals(existing.modName, modData.modName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(ModData.StripArchiveExtension(existing.modName), strippedName, StringComparison.OrdinalIgnoreCase));
+
+            foreach (ProfileData profileData in profiles)
+            {
+                profileData.mods.RemoveAll(profileMod =>
+                    string.Equals(profileMod.modName, modData.modName, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(ModData.StripArchiveExtension(profileMod.modName), strippedName, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
         #endregion
 
         #region Events
@@ -158,14 +188,14 @@ namespace Crescent.Plugins
         }
 
         public virtual void OnModUnloaded(ModData modData) { }
-        
+
         public virtual void Load() { }
         public virtual void Unload() { }
-        
+
         #endregion
 
         #region Deployment & Withdrawl
-        
+
         public void SetDeploymentStatus(DeploymentState state, string statusMessage)
         {
             deploymentState = state;
@@ -198,10 +228,10 @@ namespace Crescent.Plugins
 
         public virtual List<string> GetModFilters() => new()
         {
-            "All", 
-            "Managed", 
-            "Manual", 
-            "Enabled", 
+            "All",
+            "Managed",
+            "Manual",
+            "Enabled",
             "Disabled",
             "Deployed",
             "Has Update"
@@ -233,7 +263,7 @@ namespace Crescent.Plugins
         public virtual List<string> GetCoreModMatches() => new();
 
         public virtual bool IsCoreMod(ModData modData) => false;
-        
+
         #endregion
     }
 }

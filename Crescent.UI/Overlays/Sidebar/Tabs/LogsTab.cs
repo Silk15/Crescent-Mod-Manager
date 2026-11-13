@@ -7,10 +7,9 @@ namespace Crescent.UI
 {
     public class LogsTab : StackPanel, ISidebarTab
     {
-        public PluginData? gameData;
+        public PluginData? pluginData;
         public SidebarOverlay? sidebarOverlay;
         
-        public Tab Tab => Tab.Logs;
         public int Order => 1;
         
         public CrescentButton GetButton() => new(ButtonStyle.Translucent)
@@ -22,7 +21,7 @@ namespace Crescent.UI
 
         public void OnLoaded(SidebarOverlay sidebarOverlay, PluginData pluginData)
         {
-            this.gameData = pluginData;
+            this.pluginData = pluginData;
             this.sidebarOverlay = sidebarOverlay;
         }
         

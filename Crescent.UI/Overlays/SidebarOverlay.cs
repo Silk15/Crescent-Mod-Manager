@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Crescent.Plugins;
 
 namespace Crescent.UI
@@ -81,22 +82,11 @@ namespace Crescent.UI
             });
 
             sidebarLayoutPanel.Children.Add(GetModManagementPanel());
-            Border statusBorder = new()
-            {
-                Background = Colors.Button,
-                CornerRadius = new CornerRadius(4),
-                Padding = new Thickness(10, 8)
-            };
-
-            statusBorder.Child = GetStatusPanel();
-            sidebarLayoutPanel.Children.Add(statusBorder);
-            UpdateDeploymentStatus(plugin);
 
             TextBlock gameTitle = new()
             {
                 Text = plugin.Name,
                 FontWeight = FontWeight.Bold,
-
                 VerticalAlignment = VerticalAlignment.Center
             };
 
@@ -155,7 +145,7 @@ namespace Crescent.UI
                 sidebarTabs.Add(tab);
             }
 
-            foreach (ISidebarTab tab in sidebarTabs.OrderBy(s => s.Order))
+            foreach (ISidebarTab tab in sidebarTabs.OrderBy(sidebarTab => sidebarTab.Order))
             {
                 CrescentButton crescentButton = tab.GetButton();
                 crescentButton.onClick += () => OpenTab(tab);
@@ -182,9 +172,9 @@ namespace Crescent.UI
 
         public T? GetTab<T>() where T : ISidebarTab
         {
-            for (int i = 0; i < sidebarTabs.Count; i++)
-                if (sidebarTabs[i] is T)
-                    return (T)sidebarTabs[i];
+            for (int index = 0; index < sidebarTabs.Count; index++)
+                if (sidebarTabs[index] is T matchedTab)
+                    return matchedTab;
             return default;
         }
 
@@ -206,38 +196,6 @@ namespace Crescent.UI
             return modManagementPanel;
         }
 
-        public StackPanel GetStatusPanel()
-        {
-            StackPanel statusPanel = new()
-            {
-                Spacing = 6
-            };
-
-            deploymentText = new()
-            {
-                TextAlignment = TextAlignment.Center,
-                Text = "",
-                Foreground = Brushes.LightGray,
-                TextWrapping = TextWrapping.Wrap,
-                FontSize = 12
-            };
-
-            deploymentProgressBar = new()
-            {
-                Foreground = Brushes.CornflowerBlue,
-                Minimum = 0,
-                Maximum = 100,
-                Value = 0,
-                Height = 6,
-                IsVisible = false,
-                HorizontalAlignment = HorizontalAlignment.Stretch
-            };
-
-            statusPanel.Children.Add(deploymentText);
-            statusPanel.Children.Add(deploymentProgressBar);
-            return statusPanel;
-        }
-
         public CrescentButton GetDeployButton()
         {
             deployButton = new(Colors.Green)
@@ -248,36 +206,26 @@ namespace Crescent.UI
 
             deployButton.onClick += async () =>
             {
-                if (currentGame == null) return;
+                if (currentGame == null || !deployButton.IsEnabled) return;
+                SetActionButtonsEnabled(false);
+                deployButton.Content = "Deploying...";
 
-                bool isDeploying = true;
-                Task animationTask = Task.Run(async () =>
-                {
-                    int count = 0;
-                    while (isDeploying)
-                    {
-                        count = count % 3 + 1;
-                        string dots = new('.', count);
-
-                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => deployButton.Content = $"Deploying{dots}");
-                        await Task.Delay(250);
-                    }
-                });
+                ModPathUtils.CleanupStagingDirectory(currentGame);
+                ToastManager.ShowProgress($"Deploying {currentGame.Name}", $"Profile: {currentGame.SelectedProfile.name}", "Preparing staging files...", 0, true);
 
                 try
                 {
                     await currentGame.Deploy();
+                    ModsTab? modsTab = GetTab<ModsTab>();
+                    modsTab?.RenderMods();
                 }
                 finally
                 {
-                    isDeploying = false;
-                    await animationTask;
-
-                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         deployButton.Content = "Deploy";
-                        UpdateDeploymentStatus(currentGame);
-                        if (deploymentProgressBar != null) deploymentProgressBar.IsVisible = false;
+                        SetActionButtonsEnabled(true);
+                        PresentDeploymentToast(currentGame);
                     });
                 }
             };
@@ -290,46 +238,77 @@ namespace Crescent.UI
             withdrawButton = new(Colors.Red)
             {
                 Content = "Withdraw",
-                Width = 105,
+                Width = 105
             };
 
             withdrawButton.onClick += async () =>
             {
-                if (currentGame == null) return;
+                if (currentGame == null || !withdrawButton.IsEnabled) return;
+                SetActionButtonsEnabled(false);
+                withdrawButton.Content = "Withdrawing...";
 
-                bool isWithdrawing = true;
-                Task animationTask = Task.Run(async () =>
-                {
-                    int count = 0;
-                    while (isWithdrawing)
-                    {
-                        count = count % 3 + 1;
-                        string dots = new('.', count);
-
-                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => withdrawButton.Content = $"Withdrawing{dots}");
-                        await Task.Delay(250);
-                    }
-                });
+                int deployedBeforeCount = currentGame.installedMods.Count(mod => mod.isDeployed);
+                ToastManager.ShowProgress($"Withdrawing {currentGame.Name}", $"Removing {deployedBeforeCount} deployed mod{(deployedBeforeCount == 1 ? "" : "s")}...", $"Profile: {currentGame.SelectedProfile.name}", 0, true);
 
                 try
                 {
                     await Task.Run(() => currentGame.Withdraw());
+                    ModsTab? modsTab = GetTab<ModsTab>();
+                    modsTab?.RenderMods();
                 }
                 finally
                 {
-                    isWithdrawing = false;
-                    await animationTask;
-
-                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         withdrawButton.Content = "Withdraw";
-                        UpdateDeploymentStatus(currentGame);
-                        if (deploymentProgressBar != null) deploymentProgressBar.IsVisible = false;
+                        SetActionButtonsEnabled(true);
+                        ToastManager.CompleteProgress(
+                            "Mods Withdrawn",
+                            currentGame.DeploymentStatus.Replace("\n", " "),
+                            ToastType.Info,
+                            4000,
+                            $"{currentGame.Name} • Profile: {currentGame.SelectedProfile.name}");
                     });
                 }
             };
 
             return withdrawButton;
+        }
+
+        public static void PresentDeploymentToast(PluginData plugin)
+        {
+            int deployedCount = plugin.installedMods.Count(mod => mod.isDeployed && plugin.SelectedProfile.IsModEnabled(mod));
+            int enabledCount = plugin.installedMods.Count(mod => plugin.SelectedProfile.IsModEnabled(mod));
+            int totalFiles = plugin.installedMods.Where(mod => mod.isDeployed && plugin.SelectedProfile.IsModEnabled(mod)).Sum(mod => mod.ownedFiles.Count);
+
+            ToastType toastType = plugin.DeploymentState switch
+            {
+                DeploymentState.Deployed => ToastType.Success,
+                DeploymentState.PartiallyDeployed => ToastType.Warning,
+                DeploymentState.Failed => ToastType.Error,
+                _ => ToastType.Info
+            };
+
+            string title = plugin.DeploymentState switch
+            {
+                DeploymentState.Deployed => "Deployment Complete",
+                DeploymentState.PartiallyDeployed => "Partially Deployed",
+                DeploymentState.Failed => "Deployment Failed",
+                _ => "Deployment Status"
+            };
+
+            string primaryLine = deployedCount > 0
+                ? $"Deployed {deployedCount}/{enabledCount} enabled mod{(enabledCount == 1 ? "" : "s")} ({totalFiles} file{(totalFiles == 1 ? "" : "s")})"
+                : plugin.DeploymentStatus.Replace("\n", " ");
+
+            string detailLine = $"{plugin.Name} • Profile: {plugin.SelectedProfile.name}";
+            ToastManager.CompleteProgress(title, primaryLine, toastType, 4500, detailLine);
+        }
+
+        private static void SetActionButtonsEnabled(bool isEnabled)
+        {
+            if (deployButton != null) deployButton.IsEnabled = isEnabled;
+            if (withdrawButton != null) withdrawButton.IsEnabled = isEnabled;
         }
 
         #endregion
@@ -467,7 +446,6 @@ namespace Crescent.UI
 
             Grid.SetColumn(toggleButton, 3);
             addProfileButton.Click += async (_, _) => await AddProfileAsync(plugin);
-
             importProfileButton.Click += async (_, _) => await ProfileUtils.ImportProfileAsync(plugin, this);
 
             bool isCollapsed = false;
@@ -500,6 +478,7 @@ namespace Crescent.UI
 
             if (previousState == DeploymentState.Deployed) await plugin.Deploy();
             if (modsTab != null) modsTab.Refresh();
+            ToastManager.Show("Profile Switched", $"Active profile set to {profile.name}.", ToastType.Info, 3000, plugin.Name);
         }
 
         public async Task AddProfileAsync(PluginData plugin)
@@ -526,6 +505,7 @@ namespace Crescent.UI
                 renderProfiles?.Invoke();
                 ModsTab? modsTab = GetTab<ModsTab>();
                 if (modsTab != null) modsTab.Refresh();
+                ToastManager.Show("Profile Created", $"Created and switched to {newName}.", ToastType.Success, 3000, plugin.Name);
             }
         }
 
@@ -535,25 +515,13 @@ namespace Crescent.UI
 
         public void UpdateDeploymentStatus(PluginData plugin)
         {
-            if (deploymentText == null) return;
-            deploymentText.Text = plugin.DeploymentStatus;
-            deploymentText.Foreground = plugin.DeploymentState switch
-            {
-                DeploymentState.Deployed => Colors.Green,
-                DeploymentState.Deploying => Brushes.Yellow,
-                DeploymentState.Withdrawing => Brushes.Yellow,
-                DeploymentState.PartiallyDeployed => Brushes.Orange,
-                DeploymentState.Failed => Colors.Red,
-                DeploymentState.NotDeployed => Brushes.White,
-                _ => Brushes.LightGray
-            };
+            if (plugin.DeploymentState != DeploymentState.Deploying && plugin.DeploymentState != DeploymentState.Withdrawing)
+                ToastManager.OnProgressDialogClosed();
         }
 
         public void UpdateProgress(int current, int total)
         {
-            if (deploymentProgressBar == null) return;
-            deploymentProgressBar.IsVisible = true;
-            if (total > 0) deploymentProgressBar.Value = (double)current / total * 100;
+            ToastManager.UpdateProgress(current, total, currentGame?.Name ?? "Mods");
         }
     }
 }

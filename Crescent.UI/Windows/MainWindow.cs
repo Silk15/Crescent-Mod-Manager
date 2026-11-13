@@ -24,6 +24,9 @@ namespace Crescent.UI
         public SidebarOverlay? sidebarOverlay;
         public ToolbarOverlay? toolbarOverlay;
         public LibraryPanel? libraryPanel;
+        public ToastOverlay? toastOverlay;
+
+        private DeploymentState lastObservedState = DeploymentState.NotDeployed;
 
         public MainWindow()
         {
@@ -78,6 +81,18 @@ namespace Crescent.UI
         {
             if (selectedGame != plugin || sidebarOverlay == null) return;
             sidebarOverlay.UpdateDeploymentStatus(plugin);
+
+            DeploymentState currentState = plugin.deploymentState;
+            if ((lastObservedState == DeploymentState.Deploying || lastObservedState == DeploymentState.Withdrawing) &&
+                currentState != DeploymentState.Deploying && currentState != DeploymentState.Withdrawing)
+            {
+                if (lastObservedState == DeploymentState.Deploying)
+                    SidebarOverlay.PresentDeploymentToast(plugin);
+                else
+                    ToastManager.CompleteProgress("Mods Withdrawn", plugin.DeploymentStatus.Replace("\n", " "), ToastType.Info, 4000, $"{plugin.Name} • Profile: {plugin.SelectedProfile.name}");
+            }
+
+            lastObservedState = currentState;
         }
 
         public void UpdateBackground(PluginData? game = null)
@@ -90,7 +105,7 @@ namespace Crescent.UI
                 {
                     string bannerPath = Path.Combine(Runtime.PluginPath, game.folderName, "Assets", game.Theme.BackgroundName);
                     Bitmap? bitmap = null;
-                    
+
                     if (!string.IsNullOrEmpty(bannerPath) && File.Exists(bannerPath)) bitmap = new Bitmap(bannerPath);
                     if (bitmap != null)
                     {
@@ -179,6 +194,10 @@ namespace Crescent.UI
             mainGrid.Children.Add(bodyGrid);
             Grid.SetRow(bodyGrid, 1);
 
+            toastOverlay = ToastManager.Initialize();
+            mainGrid.Children.Add(toastOverlay);
+            Grid.SetRowSpan(toastOverlay, 2);
+
             sidebarOverlay.IsVisible = false;
             return mainGrid;
         }
@@ -213,7 +232,6 @@ namespace Crescent.UI
 
         #endregion
 
-
         #region Events
 
         private void OnPluginClicked(PluginData plugin)
@@ -233,10 +251,10 @@ namespace Crescent.UI
         private void OnGameSelected(PluginData plugin)
         {
             selectedGame = plugin;
+            lastObservedState = plugin.deploymentState;
             if (subscribedGame != null) subscribedGame.onDeploymentStatusChanged -= OnDeploymentStatusChanged;
             subscribedGame = plugin;
             subscribedGame.onDeploymentStatusChanged += OnDeploymentStatusChanged;
-            TryUpdateDeploymentStatus(plugin);
         }
 
         private void OnTabOpened(PluginData plugin, ISidebarTab activeTab)

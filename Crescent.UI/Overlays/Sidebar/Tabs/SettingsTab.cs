@@ -14,8 +14,7 @@ namespace Crescent.UI
         public PluginData? gameData;
         public SidebarOverlay? sidebarOverlay;
         
-        public Tab Tab => Tab.Settings;
-        public int Order => 3;
+        public int Order => 4;
 
         public CrescentButton GetButton() => new(ButtonStyle.Translucent)
         {

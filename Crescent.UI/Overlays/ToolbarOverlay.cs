@@ -16,7 +16,7 @@ namespace Crescent.UI
         {
             mainWindow = window;
             Background = Colors.Overlay;
-
+            
             ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
             ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
             RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
