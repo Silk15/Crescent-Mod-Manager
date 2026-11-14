@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Crescent.Plugins;
+using Crescent.Utilities;
 
 namespace Crescent.UI
 {
@@ -17,6 +18,7 @@ namespace Crescent.UI
             typeof(PlayTab),
             typeof(LogsTab),
             typeof(ModsTab),
+            typeof(LoadOrderTab),
             typeof(SettingsTab)
         };
 
@@ -262,12 +264,7 @@ namespace Crescent.UI
                     {
                         withdrawButton.Content = "Withdraw";
                         SetActionButtonsEnabled(true);
-                        ToastManager.CompleteProgress(
-                            "Mods Withdrawn",
-                            currentGame.DeploymentStatus.Replace("\n", " "),
-                            ToastType.Info,
-                            4000,
-                            $"{currentGame.Name} • Profile: {currentGame.SelectedProfile.name}");
+                        ToastManager.CompleteProgress("Mods Withdrawn", currentGame.DeploymentStatus.Replace("\n", " "), ToastType.Info, 4000, $"{currentGame.Name} • ({currentGame.SelectedProfile.name})");
                     });
                 }
             };
@@ -297,12 +294,8 @@ namespace Crescent.UI
                 _ => "Deployment Status"
             };
 
-            string primaryLine = deployedCount > 0
-                ? $"Deployed {deployedCount}/{enabledCount} enabled mod{(enabledCount == 1 ? "" : "s")} ({totalFiles} file{(totalFiles == 1 ? "" : "s")})"
-                : plugin.DeploymentStatus.Replace("\n", " ");
-
-            string detailLine = $"{plugin.Name} • Profile: {plugin.SelectedProfile.name}";
-            ToastManager.CompleteProgress(title, primaryLine, toastType, 4500, detailLine);
+            string primaryLine = deployedCount > 0 ? $"Deployed {deployedCount}/{enabledCount} enabled mod{enabledCount.WithPlural()} ({totalFiles} file{totalFiles.WithPlural()})" : plugin.DeploymentStatus.Replace("\n", " ");
+            ToastManager.CompleteProgress(title, primaryLine, toastType, 4500, $"{plugin.Name} • ({plugin.SelectedProfile.name})");
         }
 
         private static void SetActionButtonsEnabled(bool isEnabled)
@@ -478,7 +471,7 @@ namespace Crescent.UI
 
             if (previousState == DeploymentState.Deployed) await plugin.Deploy();
             if (modsTab != null) modsTab.Refresh();
-            ToastManager.Show("Profile Switched", $"Active profile set to {profile.name}.", ToastType.Info, 3000, plugin.Name);
+            ToastManager.Show("Profile Switched", $"Active profile set to {profile.name}", ToastType.Info, 3000, plugin.Name);
         }
 
         public async Task AddProfileAsync(PluginData plugin)
@@ -505,7 +498,7 @@ namespace Crescent.UI
                 renderProfiles?.Invoke();
                 ModsTab? modsTab = GetTab<ModsTab>();
                 if (modsTab != null) modsTab.Refresh();
-                ToastManager.Show("Profile Created", $"Created and switched to {newName}.", ToastType.Success, 3000, plugin.Name);
+                ToastManager.Show("Profile Created", $"Created and switched to {newName}", ToastType.Success, 3000, plugin.Name);
             }
         }
 
@@ -519,9 +512,6 @@ namespace Crescent.UI
                 ToastManager.OnProgressDialogClosed();
         }
 
-        public void UpdateProgress(int current, int total)
-        {
-            ToastManager.UpdateProgress(current, total, currentGame?.Name ?? "Mods");
-        }
+        public void UpdateProgress(int current, int total) => ToastManager.UpdateProgress(current, total, currentGame?.Name ?? "Mods");
     }
 }

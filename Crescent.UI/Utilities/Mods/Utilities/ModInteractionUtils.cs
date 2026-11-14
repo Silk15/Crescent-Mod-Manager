@@ -156,7 +156,7 @@ namespace Crescent.UI
                 string downloadUrl = await NexusUtils.GetDownloadUrlAsync(plugin.API.Name, modData.url.nexusId, modData.LatestFileId);
                 if (string.IsNullOrEmpty(downloadUrl))
                 {
-                    ToastManager.CompleteProgress("Update Failed", $"Could not retrieve download link for {cleanDisplayName}.", ToastType.Error);
+                    ToastManager.CompleteProgress("Update Failed", $"Could not retrieve download link for {cleanDisplayName} :(", ToastType.Error);
                     return;
                 }
 
@@ -169,7 +169,7 @@ namespace Crescent.UI
                 string? tempFilePath = await NexusUtils.DownloadFileAsync(downloadUrl, tempDownloadFolder, fallbackName, downloadProgress);
                 if (string.IsNullOrEmpty(tempFilePath) || !File.Exists(tempFilePath))
                 {
-                    ToastManager.CompleteProgress("Update Failed", $"Download failed for {cleanDisplayName}.", ToastType.Error);
+                    ToastManager.CompleteProgress("Update Failed", $"Download failed for {cleanDisplayName} :(", ToastType.Error);
                     return;
                 }
 
@@ -199,14 +199,14 @@ namespace Crescent.UI
                 plugin.ReplaceModId(oldModName, fileName, modData);
                 await plugin.SaveAsync();
 
-                ToastManager.CompleteProgress("Mod Updated", $"{modData.DisplayName.Cleaned()} updated to v{modData.version}.", ToastType.Success, 4000, plugin.Name);
+                ToastManager.CompleteProgress("Mod Updated", $"{modData.DisplayName.Cleaned()} updated to v{modData.version}!", ToastType.Success, 4000, plugin.Name);
 
                 if (wasDeployed) await plugin.Deploy();
             }
             catch (Exception exception)
             {
                 Logger.Error(exception.ToString());
-                ToastManager.CompleteProgress("Update Error", $"Failed to update {modData.DisplayName.Cleaned()}.", ToastType.Error);
+                ToastManager.CompleteProgress("Update Error", $"Failed to update {modData.DisplayName.Cleaned()} :(", ToastType.Error);
             }
             finally
             {
@@ -242,7 +242,7 @@ namespace Crescent.UI
             else DisableManualInstall(plugin, modData, manualFolder, fileName, directoryExists);
 
             await plugin.SaveAsync();
-            ToastManager.Show("Install Mode Changed", $"{modData.DisplayName.Cleaned()} is now {(modData.isManual ? PluginData.Manual : PluginData.Managed)}.", ToastType.Info, 3000, plugin.Name);
+            ToastManager.Show("Install Mode Changed", $"{modData.DisplayName.Cleaned()} is now {(modData.isManual ? PluginData.Manual : PluginData.Managed)}", ToastType.Info, 3000, plugin.Name);
         }
 
         private static void EnableManualInstall(PluginData plugin, ModData modData, string manualFolder, string fileName, bool directoryExists)

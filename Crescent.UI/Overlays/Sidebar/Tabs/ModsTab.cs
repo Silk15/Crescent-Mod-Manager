@@ -29,15 +29,18 @@ namespace Crescent.UI
             "Update Available"
         };
 
-        public PluginData? gameData;
+        public PluginData? pluginData;
         public SidebarOverlay? sidebarOverlay;
         public List<RenderedMod> renderedMods = new();
+        public Dictionary<ModData, RenderedMod> renderedModCache = new();
         public TextBlock? titleBlock;
+        public StackPanel? listPanel;
 
-        private string selectedSortOption = "A - Z";
-        private string selectedFilterOption = "All";
-        private CancellationTokenSource? searchCancellationToken;
-        private Action? renderMods;
+        public string selectedSortOption = "A - Z";
+        public string selectedFilterOption = "All";
+        public bool isSetup;
+        public CancellationTokenSource? searchCancellationToken;
+        public Action? renderMods;
         public int Order => 2;
 
         public CrescentButton GetButton() => new(ButtonStyle.Translucent)
@@ -49,15 +52,27 @@ namespace Crescent.UI
 
         public void OnLoaded(SidebarOverlay sidebarOverlay, PluginData pluginData)
         {
-            this.gameData = pluginData;
+            if (this.pluginData != pluginData)
+            {
+                renderedModCache.Clear();
+                isSetup = false;
+            }
+
+            this.pluginData = pluginData;
             this.sidebarOverlay = sidebarOverlay;
             Setup();
         }
 
-        public void OnClick() => Refresh();
+        public void OnClick()
+        {
+            if (!isSetup) Setup();
+            else RenderMods();
+        }
 
         public void Refresh()
         {
+            renderedModCache.Clear();
+            isSetup = false;
             Children.Clear();
             Setup();
         }
@@ -72,10 +87,15 @@ namespace Crescent.UI
 
         public void Setup()
         {
+            if (isSetup) return;
+            isSetup = true;
+
+            Children.Clear();
             renderedMods.Clear();
             Margin = new Thickness(30, 15, 30, 30);
             Spacing = 15;
             Background = Brushes.Transparent;
+
             StackPanel mainPanel = new()
             {
                 Height = ISidebarTab.TopBarHeight,
@@ -84,7 +104,7 @@ namespace Crescent.UI
 
             titleBlock = new()
             {
-                Text = $"{gameData!.SelectedProfile.name} ({gameData.ModCount} Mod{gameData.ModCount.WithPlural()})",
+                Text = $"{pluginData!.SelectedProfile.name} ({pluginData.ModCount} Mod{pluginData.ModCount.WithPlural()})",
                 FontSize = 20,
                 FontWeight = FontWeight.Bold,
                 VerticalAlignment = VerticalAlignment.Center
@@ -116,8 +136,8 @@ namespace Crescent.UI
             });
 
             Children.Add(mainPanel);
-            if (string.IsNullOrEmpty(gameData.StagingPath)) return;
-            if (!Directory.Exists(gameData.StagingPath))
+            if (string.IsNullOrEmpty(pluginData.StagingPath)) return;
+            if (!Directory.Exists(pluginData.StagingPath))
             {
                 TextBlock warningText = new()
                 {
@@ -130,7 +150,7 @@ namespace Crescent.UI
                 return;
             }
 
-            StackPanel listPanel = new()
+            listPanel = new()
             {
                 Spacing = 8
             };
@@ -168,7 +188,7 @@ namespace Crescent.UI
                 Margin = new Thickness(0, 0, 10, 0)
             };
 
-            List<string> filters = gameData!.GetModFilters();
+            List<string> filters = pluginData!.GetModFilters();
             filterComboBox.ItemsSource = filters;
             int filterIndex = filters.IndexOf(selectedFilterOption);
             filterComboBox.SelectedIndex = filterIndex >= 0 ? filterIndex : 0;
@@ -191,58 +211,60 @@ namespace Crescent.UI
             return searchGrid;
         }
 
-        private static string EnsureSafeModIdentifier(PluginData pluginData, string diskName)
+        public static HashSet<string> GetArchiveFileNames(PluginData pluginData)
+        {
+            HashSet<string> archiveFiles = new(StringComparer.OrdinalIgnoreCase);
+            string archiveDirectory = Path.Combine(pluginData.StagingPath, PluginData.Archive);
+            if (!Directory.Exists(archiveDirectory)) return archiveFiles;
+
+            string[] files = Directory.GetFiles(archiveDirectory);
+            for (int index = 0; index < files.Length; index++)
+                archiveFiles.Add(Path.GetFileName(files[index]));
+
+            return archiveFiles;
+        }
+
+        public static string GetModId(HashSet<string> archiveFiles, string diskName)
         {
             if (ModPathUtils.HasArchiveExtension(diskName)) return diskName;
 
-            string archiveDirectory = Path.Combine(pluginData.StagingPath, PluginData.Archive);
-            if (Directory.Exists(archiveDirectory))
+            for (int index = 0; index < ModPathUtils.ArchiveExtensions.Length; index++)
             {
-                for (int index = 0; index < ModPathUtils.ArchiveExtensions.Length; index++)
-                {
-                    string candidateName = diskName + ModPathUtils.ArchiveExtensions[index];
-                    if (File.Exists(Path.Combine(archiveDirectory, candidateName)))
-                        return candidateName;
-                }
+                string candidateName = diskName + ModPathUtils.ArchiveExtensions[index];
+                if (archiveFiles.Contains(candidateName)) return candidateName;
             }
 
             return diskName.Contains('.') ? diskName + ".zip" : diskName;
         }
 
-        private List<RenderedMod> ApplySortOrder(List<RenderedMod> items, string sortMode)
+        public RenderedMod GetOrCreateRenderedMod(ModData modData)
+        {
+            if (renderedModCache.TryGetValue(modData, out RenderedMod? existing))
+            {
+                existing.RefreshDeployedState();
+                return existing;
+            }
+
+            RenderedMod created = new(pluginData!, modData, this);
+            renderedModCache[modData] = created;
+            return created;
+        }
+
+        public List<RenderedMod> Sort(List<RenderedMod> items, string sortMode)
         {
             return sortMode switch
             {
-                "Z - A" => items
-                    .OrderByDescending(item => item.modData.DisplayName.Cleaned(), StringComparer.OrdinalIgnoreCase)
-                    .ToList(),
-                "Managed First" => items
-                    .OrderBy(item => item.modData.isManual)
-                    .ThenBy(item => item.modData.DisplayName.Cleaned(), StringComparer.OrdinalIgnoreCase)
-                    .ToList(),
-                "Manual First" => items
-                    .OrderByDescending(item => item.modData.isManual)
-                    .ThenBy(item => item.modData.DisplayName.Cleaned(), StringComparer.OrdinalIgnoreCase)
-                    .ToList(),
-                "Enabled First" => items
-                    .OrderByDescending(item => gameData!.SelectedProfile.IsModEnabled(item.modData))
-                    .ThenBy(item => item.modData.DisplayName.Cleaned(), StringComparer.OrdinalIgnoreCase)
-                    .ToList(),
-                "Deployed First" => items
-                    .OrderByDescending(item => item.modData.isDeployed)
-                    .ThenBy(item => item.modData.DisplayName.Cleaned(), StringComparer.OrdinalIgnoreCase)
-                    .ToList(),
-                "Update Available" => items
-                    .OrderByDescending(item => item.modData.UpdateAvailable)
-                    .ThenBy(item => item.modData.DisplayName.Cleaned(), StringComparer.OrdinalIgnoreCase)
-                    .ToList(),
-                _ => items
-                    .OrderBy(item => item.modData.DisplayName.Cleaned(), StringComparer.OrdinalIgnoreCase)
-                    .ToList()
+                "Z - A" => items.OrderByDescending(item => item.cleanName, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Managed First" => items.OrderBy(item => item.modData.isManual).ThenBy(item => item.cleanName, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Manual First" => items.OrderByDescending(item => item.modData.isManual).ThenBy(item => item.cleanName, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Enabled First" => items.OrderByDescending(item => pluginData!.SelectedProfile.IsModEnabled(item.modData)).ThenBy(item => item.cleanName, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Deployed First" => items.OrderByDescending(item => item.modData.isDeployed).ThenBy(item => item.cleanName, StringComparer.OrdinalIgnoreCase).ToList(),
+                "Update Available" => items.OrderByDescending(item => item.modData.UpdateAvailable).ThenBy(item => item.cleanName, StringComparer.OrdinalIgnoreCase).ToList(),
+                _ => items.OrderBy(item => item.cleanName, StringComparer.OrdinalIgnoreCase).ToList()
             };
         }
 
-        public void SetupModListRenderer(TextBox searchBox, ComboBox filterComboBox, ComboBox sortComboBox, StackPanel listPanel)
+        public void SetupModListRenderer(TextBox searchBox, ComboBox filterComboBox, ComboBox sortComboBox, StackPanel targetListPanel)
         {
             renderMods = () =>
             {
@@ -250,168 +272,38 @@ namespace Crescent.UI
                 searchCancellationToken = new();
                 CancellationToken token = searchCancellationToken.Token;
 
-                renderedMods.Clear();
-                listPanel.Children.Clear();
-                List<string> modPaths = ModPathUtils.GetModPaths(gameData!);
-
-                HashSet<string> validModNames = new(StringComparer.OrdinalIgnoreCase);
-                foreach (string filePath in modPaths)
-                {
-                    string fileName = Path.GetFileName(filePath);
-                    validModNames.Add(fileName);
-                    validModNames.Add(ModPathUtils.StripArchiveExtension(fileName));
-                }
-
-                gameData!.installedMods.RemoveAll(mod =>
-                {
-                    if (validModNames.Contains(mod.modName)) return false;
-                    string unzippedName = ModPathUtils.StripArchiveExtension(mod.modName);
-                    if (validModNames.Contains(unzippedName)) return false;
-
-                    return true;
-                });
-
                 string filterText = searchBox.Text != null ? searchBox.Text.ToLower() : string.Empty;
                 selectedFilterOption = filterComboBox.SelectedItem as string ?? "All";
                 selectedSortOption = sortComboBox.SelectedItem as string ?? "A - Z";
-                bool isDefaultProfile = string.Equals(gameData.selectedProfileName, PluginData.Default, StringComparison.OrdinalIgnoreCase);
 
-                List<ModData> modsToCheck = new();
-                List<RenderedMod> tempRenderedMods = new();
+                RenderMods(targetListPanel, filterText);
 
-                if (isDefaultProfile)
+                _ = Task.Run(async () =>
                 {
-                    foreach (string filePath in modPaths)
-                    {
-                        if (token.IsCancellationRequested) return;
+                    bool listChanged = SyncMods(token);
+                    if (token.IsCancellationRequested) return;
 
-                        string diskName = Path.GetFileName(filePath);
-                        string strippedName = ModPathUtils.StripArchiveExtension(diskName);
-                        ModData? modData = gameData.installedMods.Find(mod =>
-                            string.Equals(mod.modName, diskName, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(ModPathUtils.StripArchiveExtension(mod.modName), strippedName, StringComparison.OrdinalIgnoreCase));
+                    if (listChanged)
+                        await Dispatcher.UIThread.InvokeAsync(() => RenderMods(targetListPanel, filterText));
 
-                        string safeModName = EnsureSafeModIdentifier(gameData, diskName);
-
-                        if (modData == null)
-                        {
-                            modData = new(gameData, safeModName, filePath) { modName = safeModName };
-                            gameData.installedMods.Add(modData);
-                        }
-                        else
-                        {
-                            string previousModName = modData.modName;
-                            modData.filePath = filePath;
-                            if (!ModPathUtils.HasArchiveExtension(modData.modName))
-                            {
-                                modData.modName = safeModName;
-                                if (!string.Equals(previousModName, safeModName, StringComparison.OrdinalIgnoreCase))
-                                    gameData.ReplaceModId(previousModName, safeModName, modData);
-                            }
-                        }
-
-                        ModInteractionUtils.SyncModDeploymentState(gameData, modData);
-                        if (!modData.HasCheckedForUpdate) modsToCheck.Add(modData);
-
-                        gameData.OnModLoaded(modData);
-
-                        if (!gameData.MatchesFilter(modData, selectedFilterOption)) continue;
-                        if (!string.IsNullOrEmpty(filterText) && !modData.DisplayName.Cleaned().ToLower().Contains(filterText) && !diskName.ToLower().Contains(filterText) && !strippedName.ToLower().Contains(filterText)) continue;
-
-                        RenderedMod renderedMod = new(gameData, modData, this);
-                        tempRenderedMods.Add(renderedMod);
-                    }
-                }
-                else
-                {
-                    ProfileData profile = gameData.SelectedProfile;
-                    for (int index = 0; index < profile.mods.Count; index++)
-                    {
-                        if (token.IsCancellationRequested) return;
-
-                        ProfileModData profileMod = profile.mods[index];
-                        string strippedProfileMod = ModPathUtils.StripArchiveExtension(profileMod.modName);
-                        ModData? modData = gameData.installedMods.Find(mod =>
-                            string.Equals(mod.modName, profileMod.modName, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(ModPathUtils.StripArchiveExtension(mod.modName), strippedProfileMod, StringComparison.OrdinalIgnoreCase));
-
-                        if (modData == null) continue;
-
-                        string? matchedDiskPath = modPaths.Find(path =>
-                            string.Equals(Path.GetFileName(path), modData.modName, StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(ModPathUtils.StripArchiveExtension(Path.GetFileName(path)), strippedProfileMod, StringComparison.OrdinalIgnoreCase));
-
-                        if (!string.IsNullOrEmpty(matchedDiskPath))
-                        {
-                            modData.filePath = matchedDiskPath;
-                            string safeModName = EnsureSafeModIdentifier(gameData, Path.GetFileName(matchedDiskPath));
-                            if (!ModPathUtils.HasArchiveExtension(modData.modName))
-                                modData.modName = safeModName;
-                            profileMod.modName = modData.modName;
-                        }
-
-                        string filePath = modData.filePath;
-                        if (string.IsNullOrEmpty(filePath) || (!File.Exists(filePath) && !Directory.Exists(filePath))) continue;
-
-                        ModInteractionUtils.SyncModDeploymentState(gameData, modData);
-
-                        string modName = modData.modName;
-                        string strippedName = ModPathUtils.StripArchiveExtension(modName);
-
-                        if (!modData.HasCheckedForUpdate) modsToCheck.Add(modData);
-
-                        if (!gameData.MatchesFilter(modData, selectedFilterOption)) continue;
-                        if (!string.IsNullOrEmpty(filterText) && !modData.DisplayName.Cleaned().ToLower().Contains(filterText) && !modName.ToLower().Contains(filterText) && !strippedName.ToLower().Contains(filterText)) continue;
-
-                        gameData.OnModLoaded(modData);
-                        RenderedMod renderedMod = new(gameData, modData, this);
-                        tempRenderedMods.Add(renderedMod);
-                    }
-                }
-
-                List<RenderedMod> sortedRenderedMods = ApplySortOrder(tempRenderedMods, selectedSortOption);
-
-                _ = gameData.SaveAsync();
-
-                if (titleBlock != null)
-                    titleBlock.Text = $"{gameData.SelectedProfile.name} ({gameData.ModCount} Mod{gameData.ModCount.WithPlural()})";
-
-                foreach (RenderedMod renderedMod in sortedRenderedMods)
-                {
-                    renderedMods.Add(renderedMod);
-                    listPanel.Children.Add(renderedMod);
-                }
-
-                if (modsToCheck.Count > 0)
-                    _ = Task.Run(async () =>
-                    {
-                        for (int index = 0; index < modsToCheck.Count; index++)
-                        {
-                            if (token.IsCancellationRequested) return;
-                            ModData mod = modsToCheck[index];
-                            try
-                            {
-                                await mod.CheckForUpdateAsync(gameData.API.Name);
-                                await Dispatcher.UIThread.InvokeAsync(() =>
-                                {
-                                    RenderedMod? renderedMod = renderedMods.Find(item => item.modData == mod);
-                                    renderedMod?.RefreshMod();
-                                });
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Error(ex.ToString());
-                            }
-
-                            await Task.Delay(300, token);
-                        }
-
-                        await gameData.SaveAsync();
-                    });
+                    await CheckUpdatesAsync(token);
+                }, token);
             };
 
-            filterComboBox.SelectionChanged += (_, _) => renderMods?.Invoke();
-            sortComboBox.SelectionChanged += (_, _) => renderMods?.Invoke();
+            filterComboBox.SelectionChanged += (_, _) =>
+            {
+                selectedFilterOption = filterComboBox.SelectedItem as string ?? "All";
+                string filterText = searchBox.Text != null ? searchBox.Text.ToLower() : string.Empty;
+                RenderMods(targetListPanel, filterText);
+            };
+
+            sortComboBox.SelectionChanged += (_, _) =>
+            {
+                selectedSortOption = sortComboBox.SelectedItem as string ?? "A - Z";
+                string filterText = searchBox.Text != null ? searchBox.Text.ToLower() : string.Empty;
+                RenderMods(targetListPanel, filterText);
+            };
+
             searchBox.TextChanged += async (_, _) =>
             {
                 searchCancellationToken?.Cancel();
@@ -419,13 +311,169 @@ namespace Crescent.UI
                 CancellationToken token = searchCancellationToken.Token;
                 try
                 {
-                    await Task.Delay(200, token);
-                    if (!token.IsCancellationRequested) renderMods?.Invoke();
+                    await Task.Delay(120, token);
+                    if (!token.IsCancellationRequested)
+                    {
+                        string filterText = searchBox.Text != null ? searchBox.Text.ToLower() : string.Empty;
+                        RenderMods(targetListPanel, filterText);
+                    }
                 }
-                catch (OperationCanceledException) { }
+                catch (OperationCanceledException)
+                {
+                }
             };
 
             renderMods?.Invoke();
+        }
+
+        public void RenderMods(StackPanel targetListPanel, string filterText)
+        {
+            if (pluginData == null) return;
+
+            renderedMods.Clear();
+            targetListPanel.Children.Clear();
+
+            bool isDefaultProfile = string.Equals(pluginData.selectedProfileName, PluginData.Default, StringComparison.OrdinalIgnoreCase);
+            List<RenderedMod> matchingMods = new();
+
+            if (isDefaultProfile)
+            {
+                for (int index = 0; index < pluginData.installedMods.Count; index++)
+                {
+                    ModData modData = pluginData.installedMods[index];
+                    if (!pluginData.MatchesFilter(modData, selectedFilterOption)) continue;
+
+                    RenderedMod renderedMod = GetOrCreateRenderedMod(modData);
+                    if (!string.IsNullOrEmpty(filterText) && !renderedMod.cleanName.Contains(filterText, StringComparison.OrdinalIgnoreCase) && !modData.modName.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    matchingMods.Add(renderedMod);
+                }
+            }
+            else
+            {
+                ProfileData profile = pluginData.SelectedProfile;
+                for (int index = 0; index < profile.mods.Count; index++)
+                {
+                    ProfileModData profileMod = profile.mods[index];
+                    string strippedProfileMod = ModPathUtils.StripArchiveExtension(profileMod.modName);
+                    ModData? modData = pluginData.installedMods.Find(mod => string.Equals(mod.modName, profileMod.modName, StringComparison.OrdinalIgnoreCase) || string.Equals(ModPathUtils.StripArchiveExtension(mod.modName), strippedProfileMod, StringComparison.OrdinalIgnoreCase));
+                    if (modData == null) continue;
+                    if (!pluginData.MatchesFilter(modData, selectedFilterOption)) continue;
+
+                    RenderedMod renderedMod = GetOrCreateRenderedMod(modData);
+                    if (!string.IsNullOrEmpty(filterText) && !renderedMod.cleanName.Contains(filterText, StringComparison.OrdinalIgnoreCase) && !modData.modName.Contains(filterText, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    matchingMods.Add(renderedMod);
+                }
+            }
+
+            List<RenderedMod> sortedRenderedMods = Sort(matchingMods, selectedSortOption);
+
+            if (titleBlock != null)
+                titleBlock.Text = $"{pluginData.SelectedProfile.name} ({pluginData.ModCount} Mod{pluginData.ModCount.WithPlural()})";
+
+            for (int index = 0; index < sortedRenderedMods.Count; index++)
+            {
+                RenderedMod renderedMod = sortedRenderedMods[index];
+                renderedMods.Add(renderedMod);
+                targetListPanel.Children.Add(renderedMod);
+            }
+        }
+
+        public bool SyncMods(CancellationToken token)
+        {
+            if (pluginData == null) return false;
+
+            List<string> modPaths = ModPathUtils.GetModPaths(pluginData);
+            HashSet<string> archiveFiles = GetArchiveFileNames(pluginData);
+            HashSet<string> validModNames = new(StringComparer.OrdinalIgnoreCase);
+
+            for (int index = 0; index < modPaths.Count; index++)
+            {
+                string fileName = Path.GetFileName(modPaths[index]);
+                validModNames.Add(fileName);
+                validModNames.Add(ModPathUtils.StripArchiveExtension(fileName));
+            }
+
+            int removedCount = pluginData.installedMods.RemoveAll(mod =>
+            {
+                if (validModNames.Contains(mod.modName)) return false;
+                string unzippedName = ModPathUtils.StripArchiveExtension(mod.modName);
+                return !validModNames.Contains(unzippedName);
+            });
+
+            bool listChanged = removedCount > 0;
+
+            for (int index = 0; index < modPaths.Count; index++)
+            {
+                if (token.IsCancellationRequested) return false;
+
+                string filePath = modPaths[index];
+                string diskName = Path.GetFileName(filePath);
+                string strippedName = ModPathUtils.StripArchiveExtension(diskName);
+
+                ModData? modData = pluginData.installedMods.Find(mod => string.Equals(mod.modName, diskName, StringComparison.OrdinalIgnoreCase) || string.Equals(ModPathUtils.StripArchiveExtension(mod.modName), strippedName, StringComparison.OrdinalIgnoreCase));
+                string safeModName = GetModId(archiveFiles, diskName);
+
+                if (modData == null)
+                {
+                    modData = new(pluginData, safeModName, filePath) { modName = safeModName };
+                    pluginData.installedMods.Add(modData);
+                    pluginData.OnModLoaded(modData);
+                    listChanged = true;
+                }
+                else
+                {
+                    string previousModName = modData.modName;
+                    modData.filePath = filePath;
+                    if (!ModPathUtils.HasArchiveExtension(modData.modName))
+                    {
+                        modData.modName = safeModName;
+                        if (!string.Equals(previousModName, safeModName, StringComparison.OrdinalIgnoreCase))
+                            pluginData.ReplaceModId(previousModName, safeModName, modData);
+                    }
+
+                    pluginData.OnModLoaded(modData);
+                }
+
+                ModInteractionUtils.SyncModDeploymentState(pluginData, modData);
+            }
+
+            _ = pluginData.SaveAsync();
+            return listChanged;
+        }
+
+        public async Task CheckUpdatesAsync(CancellationToken token)
+        {
+            if (pluginData == null || !Settings.Instance.checkUpdatesOnLaunch) return;
+
+            List<ModData> modsToCheck = pluginData.installedMods.Where(mod => !mod.HasCheckedForUpdate).ToList();
+            if (modsToCheck.Count == 0) return;
+
+            for (int index = 0; index < modsToCheck.Count; index++)
+            {
+                if (token.IsCancellationRequested) return;
+                ModData mod = modsToCheck[index];
+                try
+                {
+                    await mod.CheckForUpdateAsync(pluginData.API.Name);
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (renderedModCache.TryGetValue(mod, out RenderedMod? renderedMod))
+                            renderedMod.RefreshMod();
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex.ToString());
+                }
+
+                await Task.Delay(300, token);
+            }
+
+            await pluginData.SaveAsync();
         }
 
         #endregion
@@ -467,9 +515,9 @@ namespace Crescent.UI
 
             openStagingButton.onClick += () =>
             {
-                if (string.IsNullOrEmpty(gameData!.StagingPath)) return;
-                if (!Directory.Exists(gameData.StagingPath)) return;
-                Process.Start(new ProcessStartInfo(gameData.StagingPath)
+                if (string.IsNullOrEmpty(pluginData!.StagingPath)) return;
+                if (!Directory.Exists(pluginData.StagingPath)) return;
+                Process.Start(new ProcessStartInfo(pluginData.StagingPath)
                 {
                     UseShellExecute = true
                 });
@@ -488,9 +536,9 @@ namespace Crescent.UI
 
             openDeploymentButton.onClick += () =>
             {
-                if (string.IsNullOrEmpty(gameData!.DeploymentPath)) return;
-                if (!Directory.Exists(gameData.DeploymentPath)) return;
-                Process.Start(new ProcessStartInfo(gameData.DeploymentPath)
+                if (string.IsNullOrEmpty(pluginData!.DeploymentPath)) return;
+                if (!Directory.Exists(pluginData.DeploymentPath)) return;
+                Process.Start(new ProcessStartInfo(pluginData.DeploymentPath)
                 {
                     UseShellExecute = true
                 });
@@ -512,33 +560,31 @@ namespace Crescent.UI
                 try
                 {
                     checkUpdatesButton.IsEnabled = false;
-                    int totalMods = gameData!.installedMods.Count;
+                    int totalMods = pluginData!.installedMods.Count;
                     int checkedCount = 0;
 
-                    foreach (ModData modData in gameData.installedMods)
+                    foreach (ModData modData in pluginData.installedMods)
                     {
                         checkedCount++;
                         ToastManager.ShowProgress("Checking Updates", $"{modData.DisplayName} ({checkedCount}/{totalMods})", $"Current: v{modData.version}", (double)checkedCount / Math.Max(1, totalMods) * 100);
 
                         modData.HasCheckedForUpdate = false;
-                        await modData.CheckForUpdateAsync(gameData.API.Name);
+                        await modData.CheckForUpdateAsync(pluginData.API.Name);
+                        if (renderedModCache.TryGetValue(modData, out RenderedMod? renderedMod))
+                            renderedMod.RefreshMod();
+
                         await Task.Delay(350);
                     }
 
-                    await gameData.SaveAsync();
-                    Refresh();
-                    int updatesFound = gameData.installedMods.Count(mod => mod.UpdateAvailable);
-                    ToastManager.CompleteProgress(
-                        "Update Check Complete",
-                        updatesFound > 0 ? $"{updatesFound} mod update{(updatesFound == 1 ? "" : "s")} available" : "All installed mods are up to date",
-                        updatesFound > 0 ? ToastType.Warning : ToastType.Success,
-                        4500,
-                        $"Checked {totalMods} mod{(totalMods == 1 ? "" : "s")}");
+                    await pluginData.SaveAsync();
+                    RenderMods();
+                    int updatesFound = pluginData.installedMods.Count(mod => mod.UpdateAvailable);
+                    ToastManager.CompleteProgress("Update Check Complete", updatesFound > 0 ? $"{updatesFound} mod update{(updatesFound == 1 ? "" : "s")} available" : "All installed mods are up to date", updatesFound > 0 ? ToastType.Warning : ToastType.Success, 4500, $"Checked {totalMods} mod{totalMods.WithPlural()}");
                 }
                 catch (Exception exception)
                 {
                     Logger.Error(exception.ToString());
-                    ToastManager.CompleteProgress("Update Check Failed", "An error occurred while checking for updates.", ToastType.Error);
+                    ToastManager.CompleteProgress("Update Check Failed", "An error occurred while checking for updates :(", ToastType.Error);
                 }
                 finally
                 {
@@ -569,7 +615,7 @@ namespace Crescent.UI
                 string url = confirmationDialog.InputText;
                 if (string.IsNullOrEmpty(url)) return;
 
-                ModDownloadDialog downloadDialog = new(gameData!, url);
+                ModDownloadDialog downloadDialog = new(pluginData!, url);
                 await downloadDialog.ShowDialog(window);
 
                 if (downloadDialog.DownloadSuccess) Refresh();

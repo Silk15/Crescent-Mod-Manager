@@ -1,7 +1,6 @@
 using System.Reflection;
-using Crescent.Plugins;
-using Crescent.Utilities;
 using Crescent.Json.Serialization;
+using Crescent.Utilities;
 
 namespace Crescent.Plugins
 {
@@ -24,16 +23,15 @@ namespace Crescent.Plugins
 
             PluginManifest? manifest = null;
             string jsonPath = Path.Combine(directoryPath, "plugin.json");
-            Logger.Log($"Loading plugin from {jsonPath}...");
             if (File.Exists(jsonPath))
             {
                 try
                 {
-                    manifest = await FileManager.ReadJson<PluginManifest>(jsonPath);
+                    manifest = await FileManager.ReadJsonAsync<PluginManifest>(jsonPath);
                 }
-                catch (Exception ex)
+                catch (Exception exception)
                 {
-                    Logger.Error(ex.ToString());
+                    Logger.Error(exception.ToString());
                 }
             }
 
@@ -43,7 +41,7 @@ namespace Crescent.Plugins
                 if (type.IsAssignableTo(typeof(PluginData)) && !type.IsAbstract)
                 {
                     PluginData? pluginData = Activator.CreateInstance(type) as PluginData;
-                    if (pluginData == null) throw new NullReferenceException($"PluginData of type \"{type?.Name}\" could not be instantiated!");
+                    if (pluginData == null) throw new NullReferenceException($"PluginData of type \"{type.Name}\" could not be instantiated!");
 
                     updateTask.Invoke($"Loading {pluginData.Name}...");
 
@@ -54,28 +52,27 @@ namespace Crescent.Plugins
                     {
                         string filePath = Path.Combine(folderPath, dataName + ".sav");
                         if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
-                        
-                        if (File.Exists(filePath)) pluginData = await FileManager.ReadJson(type, filePath) as PluginData;
-                        else await FileManager.WriteJson(folderPath, (dynamic)pluginData);
+
+                        if (File.Exists(filePath)) pluginData = await FileManager.ReadJsonAsync(type, filePath) as PluginData;
+                        else await FileManager.WriteJsonAsync(filePath, (dynamic)pluginData);
 
                         if (pluginData != null)
                         {
-                            if (manifest != null && !string.IsNullOrEmpty(manifest.version)) pluginData.version = manifest.version;
-                            updateTask.Invoke($"Loaded {pluginData.Name}!");
-                            
                             if (manifest != null && !string.IsNullOrEmpty(manifest.version))
                             {
                                 pluginData.version = manifest.version;
-                                pluginData.folderName = directoryPath.Split("\\").Last();
+                                pluginData.folderName = Path.GetFileName(directoryPath);
                             }
-                            
+
+                            PluginData.InstalledPlugins.RemoveAll(existing => string.Equals(existing.Name, pluginData.Name, StringComparison.OrdinalIgnoreCase));
                             PluginData.InstalledPlugins.Add(pluginData);
                             pluginData.Load();
+                            updateTask.Invoke($"Loaded {pluginData.Name}!");
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception exception)
                     {
-                        Logger.Error(ex.ToString());
+                        Logger.Error(exception.ToString());
                     }
 
                     await Task.Delay(250);

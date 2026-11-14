@@ -4,144 +4,132 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Crescent.APIs.NexusMods;
-using Crescent.Json.Serialization;
 
 namespace Crescent.UI
 {
     public class ToolbarOverlay : Grid
     {
         public MainWindow mainWindow;
+        public CrescentButton libraryButton;
+        public CrescentButton settingsButton;
+        public Border avatarBorder;
 
-        public ToolbarOverlay(MainWindow window)
+        public ToolbarOverlay(MainWindow mainWindow)
         {
-            mainWindow = window;
+            this.mainWindow = mainWindow;
             Background = Colors.Overlay;
-            
+            Height = 50;
+
+            ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
             ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
             ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-            RowDefinitions.Add(new RowDefinition(1, GridUnitType.Star));
 
-            StackPanel toolbarButtons = GetToolbarPanel();
-            Children.Add(toolbarButtons);
-            SetColumn(toolbarButtons, 0);
-            SetRow(toolbarButtons, 0);
-
-            StackPanel userPanel = GetUserPanel();
-            Children.Add(userPanel);
-            SetColumn(userPanel, 1);
-            SetRow(userPanel, 0);
-
-            OverlaySeparator bottomBorder = new(OverlaySeparator.Mode.Horizontal);
-            Children.Add(bottomBorder);
-            SetColumnSpan(bottomBorder, 2);
-            SetRow(bottomBorder, 0);
-        }
-
-        public StackPanel GetToolbarPanel()
-        {
-            StackPanel buttons = new()
+            StackPanel navigationStack = new()
             {
                 Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(10, 0, 0, 0)
+                Spacing = 8,
+                Margin = new Thickness(12, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center
             };
 
-            CrescentButton libraryButton = new(ButtonStyle.Translucent)
+            libraryButton = new(ButtonStyle.Translucent)
             {
                 Content = "Library",
-                Width = 80
+                Padding = new Thickness(14, 6)
             };
-            
             libraryButton.onClick += () => mainWindow.ShowLibrary();
-            buttons.Children.Add(libraryButton);
-            return buttons;
+
+            settingsButton = new(ButtonStyle.Translucent)
+            {
+                Content = "Settings",
+                Padding = new Thickness(14, 6)
+            };
+            settingsButton.onClick += () => mainWindow.ShowSettings();
+
+            navigationStack.Children.Add(libraryButton);
+            navigationStack.Children.Add(settingsButton);
+
+            SetColumn(navigationStack, 0);
+            Children.Add(navigationStack);
+
+            StackPanel accountStack = GetAccountPanel();
+            SetColumn(accountStack, 2);
+            Children.Add(accountStack);
+
+            OverlaySeparator bottomSeparator = new(OverlaySeparator.Mode.Horizontal)
+            {
+                VerticalAlignment = VerticalAlignment.Bottom
+            };
+            SetColumnSpan(bottomSeparator, 3);
+            Children.Add(bottomSeparator);
         }
 
-        #region User Panel
-        
-        public StackPanel GetUserPanel()
+        public StackPanel GetAccountPanel()
         {
-            StackPanel userPanel = new()
+            StackPanel accountPanel = new()
             {
                 Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
-                Spacing = 8,
-                Margin = new Thickness(0, 0, 10, 0)
+                Spacing = 10,
+                Margin = new Thickness(0, 0, 14, 0),
+                VerticalAlignment = VerticalAlignment.Center
             };
 
-            bool isLoggedOut = string.IsNullOrEmpty(NexusAuthenticator.ApiKey?.key);
-            if (isLoggedOut) userPanel.Children.Add(GetLoginButton(userPanel));
-            else userPanel.Children.Add(GetAvatarBorder());
-            return userPanel;
-        }
-
-        public Border GetAvatarBorder()
-        {
-            Border avatarBorder = new()
+            string userName = NexusAuthenticator.UserProfile?["name"]?.ToString() ?? string.Empty;
+            if (!string.IsNullOrEmpty(userName))
             {
-                CornerRadius = new CornerRadius(30),
-                ClipToBounds = true
-            };
-
-            if (NexusAuthenticator.UserAvatarBytes != null)
-            {
-                MemoryStream memoryStream = new(NexusAuthenticator.UserAvatarBytes);
-                Bitmap avatarBitmap = Bitmap.DecodeToHeight(memoryStream, 30);
-                Image avatarImage = new()
+                accountPanel.Children.Add(new TextBlock
                 {
-                    Source = avatarBitmap,
-                    Width = 30,
-                    Height = 30,
+                    Text = userName,
+                    Foreground = Brushes.LightGray,
+                    FontSize = 13,
+                    FontWeight = FontWeight.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center
-                };
-                RenderOptions.SetBitmapInterpolationMode(avatarImage, BitmapInterpolationMode.HighQuality);
-                avatarBorder.Child = avatarImage;
+                });
             }
-            else
+
+            avatarBorder = new()
             {
-                Logger.Warn("User's avatar byte array was null, sorry I got hungry :(");
-                avatarBorder.Child = new TextBlock
-                {
-                    Text = "Null"
-                };
-            }
-            
-            return avatarBorder;
+                Width = 32,
+                Height = 32,
+                CornerRadius = new CornerRadius(16),
+                ClipToBounds = true,
+                Background = Colors.Button,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            RefreshAvatar();
+            accountPanel.Children.Add(avatarBorder);
+            return accountPanel;
         }
 
-        public CrescentButton GetLoginButton(StackPanel userPanel)
+        public void RefreshAvatar()
         {
-            CrescentButton loginButton = new(ButtonStyle.Translucent)
+            if (NexusAuthenticator.UserAvatarBytes != null && NexusAuthenticator.UserAvatarBytes.Length > 0)
             {
-                Content = "Login",
-                Width = 80
-            };
-
-            loginButton.onClick += async () =>
-            {
-                string currentApiKey = NexusAuthenticator.ApiKey != null ? NexusAuthenticator.ApiKey.key ?? string.Empty : string.Empty;
-                ConfirmationDialog confirmationDialog = new("Nexus Login", "Enter your Nexus Mods API Key", true, currentApiKey);
-                await confirmationDialog.ShowDialog(mainWindow);
-                string enteredKey = confirmationDialog.InputText;
-
-                if (!string.IsNullOrEmpty(enteredKey))
+                try
                 {
-                    NexusAuthenticator.ApiKey!.key = enteredKey;
-                    await FileManager.WriteJson(NexusAuthenticator.ApiPath, NexusAuthenticator.ApiKey);
-                    await new NexusAuthenticator.SignInTask().ExecuteAsync(null);
-
-                    userPanel.Children.Clear();
-                    bool isLoggedOut = string.IsNullOrEmpty(NexusAuthenticator.ApiKey?.key);
-                    if (isLoggedOut) userPanel.Children.Add(GetLoginButton(userPanel));
-                    else userPanel.Children.Add(GetAvatarBorder());
+                    using MemoryStream memoryStream = new(NexusAuthenticator.UserAvatarBytes);
+                    avatarBorder.Child = new Image
+                    {
+                        Source = new Bitmap(memoryStream),
+                        Stretch = Stretch.UniformToFill
+                    };
+                    return;
                 }
-            };
+                catch (Exception exception)
+                {
+                    Logger.Error(exception.ToString());
+                }
+            }
 
-            return loginButton;
+            avatarBorder.Child = new TextBlock
+            {
+                Text = "N",
+                FontWeight = FontWeight.Bold,
+                Foreground = Brushes.White,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
         }
-        
-        #endregion
     }
 }

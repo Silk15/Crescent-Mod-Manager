@@ -4,8 +4,10 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
-using Crescent.Utilities;
+using Crescent.APIs.Discord;
 using Crescent.Plugins;
+using Crescent.Utilities;
+using Crescent.Versioning;
 
 namespace Crescent.UI
 {
@@ -14,11 +16,7 @@ namespace Crescent.UI
         public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<Application>().UsePlatformDetect().LogToTrace();
 
         [InitialiseOnLoad]
-        public static void Initialise() => Runtime.onCrescentLoaded += async args =>
-        {
-            Logger.Log(string.Join(", ", args));
-            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
-        };
+        public static void Initialise() => Runtime.onCrescentLoaded += args => BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
 
         public override void Initialize() => Styles.Add(new FluentTheme());
 
@@ -45,7 +43,24 @@ namespace Crescent.UI
             MainWindow mainWindow = new();
             desktop.MainWindow = mainWindow;
 
+            DiscordManager.SetEnabled(Settings.Instance.enableDiscordPresence);
             ProgressDialog? activeProgressWindow = null;
+            
+            PluginData.OnToastShow = (title, message, typeName, duration, detail) =>
+            {
+                ToastType parsedType = Enum.TryParse(typeName, true, out ToastType result) ? result : ToastType.Info;
+                ToastManager.Show(title, message, parsedType, duration, detail);
+            };
+
+            PluginData.OnToastProgress = (title, message, detail, percentage, isIndeterminate) => ToastManager.ShowProgress(title, message, detail, percentage, isIndeterminate);
+            PluginData.OnToastProgressUpdate = (current, total, modName, targetFile) => ToastManager.UpdateProgress(current, total, modName, targetFile);
+            PluginData.OnToastProgressComplete = (title, message, typeName, duration, detail) =>
+            {
+                ToastType parsedType = Enum.TryParse(typeName, true, out ToastType result) ? result : ToastType.Success;
+                ToastManager.CompleteProgress(title, message, parsedType, duration, detail);
+            };
+
+            PluginData.OnToastProgressClose = () => ToastManager.CloseProgress();
             PluginData.OnOverlapConfirm = async (title, message) =>
             {
                 string inputResult = string.Empty;
@@ -137,10 +152,42 @@ namespace Crescent.UI
             {
                 TaskbarContextMenu.Get(mainWindow)
             });
-            
+
             mainWindow.Show();
+
+            Dispatcher.UIThread.Post(async () =>
+            {
+                VersionTracker tracker = VersionTracker.Instance;
+                if (tracker.showPostUpdatePopup)
+                {
+                    VersionInfo updatedInfo = new()
+                    {
+                        name = $"Crescent {Runtime.Version}",
+                        version = Runtime.Version,
+                        releaseNotes = string.IsNullOrWhiteSpace(tracker.lastReleaseNotes) ? $"Updated Crescent Mod Manager to {Runtime.Version}" : tracker.lastReleaseNotes
+                    };
+
+                    ToastManager.Show("Crescent Updated", $"Now running Crescent {Runtime.Version}", ToastType.Success, 4000);
+                    UpdateDialog postUpdateDialog = new(updatedInfo, true);
+                    await postUpdateDialog.ShowDialog(mainWindow);
+                }
+
+                if (Settings.Instance.checkUpdatesOnLaunch)
+                {
+                    VersionInfo? remoteRelease = await GithubUpdater.CheckManagerUpdateAsync();
+                    if (remoteRelease != null)
+                    {
+                        ToastManager.Show("Update Available", $"Crescent {remoteRelease.version} is available", ToastType.Info, 4500, "Open Settings to update");
+                        if (!Settings.Instance.skipUpdatePopup)
+                        {
+                            UpdateDialog availableDialog = new(remoteRelease, false);
+                            await availableDialog.ShowDialog(mainWindow);
+                        }
+                    }
+                }
+            });
         }
-        
+
         public static void ExitApplication()
         {
             foreach (PluginData configuredGame in PluginData.InstalledPlugins)
@@ -157,6 +204,7 @@ namespace Crescent.UI
                 }
             }
 
+            DiscordManager.Disconnect();
             Environment.Exit(0);
         }
     }

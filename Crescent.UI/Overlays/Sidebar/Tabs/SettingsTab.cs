@@ -1,19 +1,16 @@
-using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Platform.Storage;
 using Crescent.Plugins;
-using Crescent.Utilities;
 
 namespace Crescent.UI
 {
     public class SettingsTab : StackPanel, ISidebarTab
     {
-        public PluginData? gameData;
+        public PluginData? pluginData;
         public SidebarOverlay? sidebarOverlay;
-        
+
         public int Order => 4;
 
         public CrescentButton GetButton() => new(ButtonStyle.Translucent)
@@ -25,9 +22,9 @@ namespace Crescent.UI
 
         public void OnLoaded(SidebarOverlay sidebarOverlay, PluginData pluginData)
         {
-            this.gameData = pluginData;
+            this.pluginData = pluginData;
             this.sidebarOverlay = sidebarOverlay;
-            Refresh();
+            Setup();
         }
 
         public void OnClick() => Refresh();
@@ -35,178 +32,68 @@ namespace Crescent.UI
         public void Refresh()
         {
             Children.Clear();
+            Setup();
+        }
+
+        public void Setup()
+        {
+            if (pluginData == null) return;
+
             Margin = new Thickness(30, 15, 30, 30);
-            Spacing = 15;
+            Spacing = 22;
             Background = Brushes.Transparent;
-            
-            StackPanel mainPanel = new()
-            {
-                VerticalAlignment = VerticalAlignment.Bottom,
-                Height = ISidebarTab.TopBarHeight,
-                Spacing = 10
-            };
-            
-            TextBlock titleBlock = new()
-            {
-                Text = "Settings",
-                FontSize = 20,
-                FontWeight = FontWeight.Bold,
-                
-                VerticalAlignment = VerticalAlignment.Center,
-            };
+            HorizontalAlignment = HorizontalAlignment.Stretch;
 
-            mainPanel.Children.Add(titleBlock);
-            mainPanel.Children.Add(new Separator
-            {
-                Height = 1,
-                Background = Colors.Separator,
-                VerticalAlignment = VerticalAlignment.Bottom
-            });
-
-            Children.Add(mainPanel);
-            Children.Add(CreatePathSetting("Game Executable Path:", gameData!.ExePath, nameof(gameData.ExePath), async path =>
-            {
-                gameData.ExePath = path;
-                await gameData.SaveAsync();
-            }, true));
-
-            Children.Add(CreatePathSetting("Mod Staging Folder:", gameData.StagingPath, nameof(gameData.StagingPath), async path =>
-            {
-                gameData.StagingPath = path;
-                await gameData.SaveAsync();
-            }, false));
-
-            Children.Add(CreatePathSetting("Target Folder:", gameData.DeploymentPath, nameof(gameData.DeploymentPath), async path =>
-            {
-                gameData.DeploymentPath = path;
-                await gameData.SaveAsync();
-            }, false));
+            Children.Add(SettingsUtils.GetHeader($"{pluginData.Name} Settings"));
+            Children.Add(GetPathsSettings());
         }
 
         #region Paths
 
-        private StackPanel CreatePathSetting(string labelText, string currentPath, string propertyName, Func<string, Task> onPathChanged, bool isFile)
+        public Border GetPathsSettings()
         {
-            StackPanel panel = new()
-            {
-                Spacing = 5
-            };
+            StackPanel sectionStack = SettingsUtils.GetSectionContainer("Directories & Executable", out Border cardBorder);
 
-            panel.Children.Add(new TextBlock
-            {
-                Text = labelText,
-                FontWeight = FontWeight.SemiBold
-            });
+            sectionStack.Children.Add(GetExePathRow());
+            sectionStack.Children.Add(GetStagingPathRow());
+            sectionStack.Children.Add(GetDeploymentPathRow());
 
-            Grid grid = new();
-            grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-
-            TextBox textBox = GetTextBox(currentPath);
-            Grid.SetColumn(textBox, 0);
-            
-            CrescentButton browseButton = GetBrowseButton(isFile, textBox, onPathChanged);
-            Grid.SetColumn(browseButton, 1);
-            
-            grid.Children.Add(textBox);
-            grid.Children.Add(browseButton);
-            panel.Children.Add(grid);
-
-            TextBlock? hintBlock = GetHint(propertyName);
-            if (hintBlock != null) panel.Children.Add(hintBlock);
-            return panel;
+            return cardBorder;
         }
 
-        public TextBox GetTextBox(string currentPath)
+        public StackPanel GetExePathRow()
         {
-            return new()
+            return SettingsUtils.GetPathRow(this, pluginData!, "Game Executable Path", pluginData!.ExePath, nameof(pluginData.ExePath), async path =>
             {
-                Text = currentPath,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 10, 0)
-            };
+                if (pluginData.ExePath == path) return;
+                pluginData.ExePath = path;
+                await pluginData.SaveAsync();
+                ToastManager.Show("Path Saved", "Updated game executable path", ToastType.Success, 2500, $"{pluginData.Name} • ({pluginData.SelectedProfile.name})");
+            }, true);
         }
 
-        public CrescentButton GetBrowseButton(bool isFile, TextBox textBox, Func<string, Task> onPathChanged)
+        public StackPanel GetStagingPathRow()
         {
-            CrescentButton browseButton = new(ButtonStyle.Translucent)
+            return SettingsUtils.GetPathRow(this, pluginData!, "Mod Staging Folder", pluginData!.StagingPath, nameof(pluginData.StagingPath), async path =>
             {
-                Content = "Browse...",
-                VerticalAlignment = VerticalAlignment.Center,
-                Width = 90
-            };
-
-            Grid.SetColumn(browseButton, 1);
-            browseButton.onClick += async () =>
-            {
-                Window? window = TopLevel.GetTopLevel(this) as Window;
-                if (window == null) return;
-
-                IStorageProvider storageProvider = window.StorageProvider;
-                if (isFile)
-                {
-                    IReadOnlyList<IStorageFile> files = await storageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-                    {
-                        Title = "Select Game Executable",
-                        AllowMultiple = false
-                    });
-
-                    if (files.Count > 0)
-                    {
-                        string path = files[0].Path.LocalPath;
-                        textBox.Text = path;
-                        await onPathChanged(path);
-                    }
-                }
-                else
-                {
-                    IReadOnlyList<IStorageFolder> folders = await storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                    {
-                        Title = "Select Target Folder",
-                        AllowMultiple = false
-                    });
-
-                    if (folders.Count > 0)
-                    {
-                        string path = folders[0].Path.LocalPath;
-                        textBox.Text = path;
-                        await onPathChanged(path);
-                    }
-                }
-            };
-            
-            return browseButton;
+                if (pluginData.StagingPath == path) return;
+                pluginData.StagingPath = path;
+                await pluginData.SaveAsync();
+                ToastManager.Show("Path Saved", "Updated mod staging folder", ToastType.Success, 2500, $"{pluginData.Name} • ({pluginData.SelectedProfile.name})");
+            }, false);
         }
 
-        public TextBlock? GetHint(string propertyName)
+        public StackPanel GetDeploymentPathRow()
         {
-            PropertyInfo? property = gameData.GetType().GetProperty(propertyName);
-            HintAttribute? hintAttribute = property != null ? Attribute.GetCustomAttribute(property, typeof(HintAttribute)) as HintAttribute : null;
-            if (hintAttribute != null)
+            return SettingsUtils.GetPathRow(this, pluginData!, "Target Folder", pluginData!.DeploymentPath, nameof(pluginData.DeploymentPath), async path =>
             {
-                Color hintColor = Colors.Separator.Color;
-                try
-                {
-                    hintColor = Color.Parse(hintAttribute.TextHex);
-                }
-                catch (Exception exception)
-                {
-                    Logger.Log(exception.ToString());
-                }
-
-                return new TextBlock
-                {
-                    Text = hintAttribute.Hint,
-                    FontSize = 11,
-                    Foreground = new SolidColorBrush(hintColor),
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 2, 0, 0)
-                };
-            }
-            
-            return null;
+                if (pluginData.DeploymentPath == path) return;
+                pluginData.DeploymentPath = path;
+                await pluginData.SaveAsync();
+                ToastManager.Show("Path Saved", "Updated target deployment folder", ToastType.Success, 2500, $"{pluginData.Name} • ({pluginData.SelectedProfile.name})");
+            }, false);
         }
-        
+
         #endregion
     }
 }

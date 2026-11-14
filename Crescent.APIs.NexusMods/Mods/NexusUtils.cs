@@ -31,11 +31,12 @@ namespace Crescent.APIs.NexusMods
             return JObject.Parse(jsonString);
         }
 
-        public static async Task<string> GetDownloadUrlAsync(string gameDomain, string nexusId, string fileId)
+        public static async Task<string> GetDownloadUrlAsync(string gameDomain, string nexusId, string fileId, string? nxmKey = null, string? nxmExpires = null)
         {
             if (string.IsNullOrEmpty(nexusId) || string.IsNullOrEmpty(fileId) || string.IsNullOrEmpty(NexusAuthenticator.ApiKey?.key)) return string.Empty;
 
-            string downloadLinkUrl = $"https://api.nexusmods.com/v1/games/{gameDomain}/mods/{nexusId}/files/{fileId}/download_link.json";
+            string querySuffix = !string.IsNullOrEmpty(nxmKey) && !string.IsNullOrEmpty(nxmExpires) ? $"?key={Uri.EscapeDataString(nxmKey)}&expires={Uri.EscapeDataString(nxmExpires)}" : string.Empty;
+            string downloadLinkUrl = $"https://api.nexusmods.com/v1/games/{gameDomain}/mods/{nexusId}/files/{fileId}/download_link.json{querySuffix}";
             HttpRequestMessage requestMessage = CreateApiRequest(HttpMethod.Get, downloadLinkUrl);
             HttpResponseMessage responseMessage = await HttpClient.SendAsync(requestMessage);
 

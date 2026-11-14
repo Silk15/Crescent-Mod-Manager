@@ -1,18 +1,20 @@
-using System.IO.Compression;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Threading;
-using Crescent.Json.Serialization;
 using Crescent.Plugins;
+using Crescent.Versioning;
 
 namespace Crescent.UI
 {
     public class LibraryPanel : StackPanel
     {
-        private readonly WrapPanel activeGrid;
-        private readonly Separator separator;
-        private readonly WrapPanel totalGrid;
+        public WrapPanel activeGrid;
+        public Separator separator;
+        public WrapPanel totalGrid;
+        public Dictionary<string, PluginCard> activeCards = new(StringComparer.OrdinalIgnoreCase);
+
+        public event Action<PluginData>? onPluginClicked;
 
         public LibraryPanel()
         {
@@ -21,12 +23,12 @@ namespace Crescent.UI
             HorizontalAlignment = HorizontalAlignment.Stretch;
             VerticalAlignment = VerticalAlignment.Top;
 
-            activeGrid = new WrapPanel
+            activeGrid = new()
             {
                 Orientation = Orientation.Horizontal
             };
 
-            separator = new Separator
+            separator = new()
             {
                 Background = Colors.Separator,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -34,148 +36,123 @@ namespace Crescent.UI
                 Margin = new Thickness(0, 10, 0, 10)
             };
 
-            totalGrid = new WrapPanel
+            totalGrid = new()
             {
                 Orientation = Orientation.Horizontal
             };
 
-            Task.Run(async () => await LoadLibraryAsync());
+            RenderInstalledPlugins();
+            _ = LoadRemotePluginsAsync();
         }
 
-        public event Action<PluginData>? onPluginClicked;
+        public void RenderInstalledPlugins()
+        {
+            activeGrid.Children.Clear();
+            activeCards.Clear();
 
-        private async Task LoadLibraryAsync()
+            HashSet<string> processedNames = new(StringComparer.OrdinalIgnoreCase);
+            for (int index = 0; index < PluginData.InstalledPlugins.Count; index++)
+            {
+                PluginData pluginData = PluginData.InstalledPlugins[index];
+                if (!processedNames.Add(pluginData.Name)) continue;
+
+                PluginCard card = new(pluginData, false);
+                card.onClick += _ => onPluginClicked?.Invoke(pluginData);
+                activeGrid.Children.Add(card);
+                activeCards[NormalizeName(pluginData.Name)] = card;
+            }
+
+            if (activeGrid.Children.Count > 0 && !Children.Contains(activeGrid))
+            {
+                Children.Add(activeGrid);
+                Children.Add(separator);
+            }
+
+            if (!Children.Contains(totalGrid))
+                Children.Add(totalGrid);
+        }
+
+        public async Task LoadRemotePluginsAsync()
         {
             List<GithubPluginInfo> remotePlugins = new();
             try
             {
                 remotePlugins = await GithubPluginInfo.GetAvailablePluginsAsync();
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                Logger.Error($"Failed to fetch plugins:\n{ex}");
+                Logger.Error($"Failed to fetch plugins:\n{exception}");
+                return;
             }
-            
-            await Dispatcher.UIThread.InvokeAsync(async () =>
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
             {
-                List<string> installedNames = new();
-                if (Directory.Exists(Runtime.PluginPath))
-                    foreach (string directoryPath in Directory.GetDirectories(Runtime.PluginPath))
-                    {
-                        string jsonPath = Path.Combine(directoryPath, "plugin.json");
-                        if (File.Exists(jsonPath))
-                            try
-                            {
-                                PluginManifest manifest = await FileManager.ReadJson<PluginManifest>(jsonPath);
-                                if (!string.IsNullOrEmpty(manifest.name)) installedNames.Add(manifest.name);
-                            }
-                            catch { }
-                    }
+                totalGrid.Children.Clear();
 
-                foreach (PluginData installedPlugin in PluginData.InstalledPlugins)
+                for (int index = 0; index < remotePlugins.Count; index++)
                 {
-                    if (!installedNames.Contains(installedPlugin.Name))
-                        installedNames.Add(installedPlugin.Name);
-                }
+                    GithubPluginInfo remote = remotePlugins[index];
+                    if (string.IsNullOrEmpty(remote.name)) continue;
 
-                HashSet<string> processedActivePlugins = new(StringComparer.OrdinalIgnoreCase);
-                foreach (string pluginName in installedNames)
-                {
-                    PluginData? matchedData = null;
-                    foreach (PluginData pluginData in PluginData.InstalledPlugins)
-                    {
-                        if (pluginData.Name.Equals(pluginName, StringComparison.OrdinalIgnoreCase) || pluginData.Name.Replace(" ", "").Equals(pluginName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase))
-                            matchedData = pluginData;
-                    }
+                    string normalizedRemote = NormalizeName(remote.name);
+                    PluginData? matchedLocal = PluginData.InstalledPlugins.FirstOrDefault(plugin => NormalizeName(plugin.Name) == normalizedRemote);
 
-                    GithubPluginInfo? matchedRemote = null;
-                    foreach (GithubPluginInfo remote in remotePlugins)
+                    if (matchedLocal != null)
                     {
-                        if (remote.name != null && (remote.name.Equals(pluginName, StringComparison.OrdinalIgnoreCase) || remote.name.Replace(" ", "").Equals(pluginName.Replace(" ", ""), StringComparison.OrdinalIgnoreCase)))
-                            matchedRemote = remote;
-                    }
-
-                    bool hasUpdate = false;
-                    if (matchedRemote != null && matchedData != null && !string.IsNullOrEmpty(matchedRemote.version) && !string.IsNullOrEmpty(matchedData.version))
-                    {
-                        Version? remoteVersion;
-                        Version? localVersion;
-                        if (Version.TryParse(matchedRemote.version, out remoteVersion) && Version.TryParse(matchedData.version, out localVersion))
+                        bool hasUpdate = VersionInfo.IsNewerVersion(remote.version, matchedLocal.version);
+                        if (hasUpdate && activeCards.TryGetValue(normalizedRemote, out PluginCard? existingCard))
                         {
-                            if (remoteVersion > localVersion)
-                                hasUpdate = true;
+                            int cardIndex = activeGrid.Children.IndexOf(existingCard);
+                            if (cardIndex >= 0)
+                            {
+                                PluginCard updatedCard = new(matchedLocal, true);
+                                updatedCard.onClick += _ => onPluginClicked?.Invoke(matchedLocal);
+                                updatedCard.onActionClick += async _ => await InstallPluginAsync(remote, true);
+                                activeGrid.Children[cardIndex] = updatedCard;
+                                activeCards[normalizedRemote] = updatedCard;
+                            }
                         }
                     }
-
-                    if (matchedData != null && processedActivePlugins.Add(matchedData.Name))
-                    {
-                        PluginCard card = new(matchedData, hasUpdate);
-                        card.onClick += _ => onPluginClicked?.Invoke(matchedData);
-                        card.onActionClick += async _ =>
-                        {
-                            if (matchedRemote != null) await DownloadAndInstallPluginAsync(matchedRemote);
-                        };
-                        activeGrid.Children.Add(card);
-                    }
-                }
-
-                if (activeGrid.Children.Count > 0)
-                {
-                    Children.Add(activeGrid);
-                    Children.Add(separator);
-                }
-
-                foreach (GithubPluginInfo remote in remotePlugins)
-                {
-                    bool isInstalled = false;
-                    foreach (string name in installedNames)
-                    {
-                        if (remote.name != null && (remote.name.Equals(name, StringComparison.OrdinalIgnoreCase) || remote.name.Replace(" ", "").Equals(name.Replace(" ", ""), StringComparison.OrdinalIgnoreCase)))
-                            isInstalled = true;
-                    }
-
-                    if (!isInstalled)
+                    else
                     {
                         PluginCard card = new(remote);
-                        card.onActionClick += async _ => await DownloadAndInstallPluginAsync(remote);
+                        card.onActionClick += async _ => await InstallPluginAsync(remote, false);
                         totalGrid.Children.Add(card);
                     }
                 }
-
-                Children.Add(totalGrid);
             });
         }
 
-        private async Task DownloadAndInstallPluginAsync(GithubPluginInfo remotePlugin)
+        public static string NormalizeName(string name) => name.Replace(" ", "").ToLowerInvariant();
+
+        public async Task InstallPluginAsync(GithubPluginInfo remotePlugin, bool isUpdate)
         {
             if (remotePlugin.name == null || remotePlugin.pluginBytes == null) return;
+
+            string actionLabel = isUpdate ? "Updating Plugin" : "Installing Plugin";
+            ToastManager.ShowProgress(actionLabel, $"{remotePlugin.name} ({remotePlugin.version})", "Extracting plugin files", 50, true);
+
             string targetDirectory = Path.Combine(Runtime.PluginPath, remotePlugin.name);
-            if (!Directory.Exists(targetDirectory)) Directory.CreateDirectory(targetDirectory);
+            bool extracted = await GithubUpdater.InstallBufferAsync(remotePlugin.pluginBytes, remotePlugin.name, targetDirectory);
 
-            string temporaryExtractDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            Directory.CreateDirectory(temporaryExtractDirectory);
-
-            string temporaryPluginPath = Path.Combine(temporaryExtractDirectory, remotePlugin.name + ".plugin");
-            await File.WriteAllBytesAsync(temporaryPluginPath, remotePlugin.pluginBytes);
-
-            string innerExtractDirectory = Path.Combine(temporaryExtractDirectory, "extracted");
-            ZipFile.ExtractToDirectory(temporaryPluginPath, innerExtractDirectory, true);
-
-            string sourceDirectory = innerExtractDirectory;
-            string[] subDirectories = Directory.GetDirectories(innerExtractDirectory);
-            string[] subFiles = Directory.GetFiles(innerExtractDirectory);
-            if (subDirectories.Length == 1 && subFiles.Length == 0) sourceDirectory = subDirectories[0];
-
-            foreach (string filePath in Directory.GetFiles(sourceDirectory, "*.*", SearchOption.AllDirectories))
+            if (!extracted)
             {
-                string relativePath = Path.GetRelativePath(sourceDirectory, filePath);
-                string destinationFilePath = Path.Combine(targetDirectory, relativePath);
-                string destinationDirectory = Path.GetDirectoryName(destinationFilePath)!;
-                if (!Directory.Exists(destinationDirectory)) Directory.CreateDirectory(destinationDirectory);
-                File.Copy(filePath, destinationFilePath, true);
+                ToastManager.CompleteProgress("Plugin Failed", $"Could not install {remotePlugin.name}", ToastType.Error, 4000);
+                return;
             }
 
-            if (Directory.Exists(temporaryExtractDirectory)) Directory.Delete(temporaryExtractDirectory, true);
+            await PluginStartupProcess.LoadPluginAsync(targetDirectory);
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                RenderInstalledPlugins();
+            });
+
+            await LoadRemotePluginsAsync();
+
+            string completionTitle = isUpdate ? "Plugin Updated" : "Plugin Installed";
+            string completionVerb = isUpdate ? "Updated" : "Installed";
+            ToastManager.CompleteProgress(completionTitle, $"{completionVerb} {remotePlugin.name} ({remotePlugin.version})", ToastType.Success, 3500, "Library");
         }
     }
 }

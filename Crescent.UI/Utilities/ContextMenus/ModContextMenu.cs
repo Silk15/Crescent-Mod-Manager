@@ -215,7 +215,7 @@ namespace Crescent.UI
 
                 await pluginData.SaveAsync();
                 modsTab.Refresh();
-                ToastManager.Show("Mod Deleted", $"Removed {deletedDisplayName} and all staging files.", ToastType.Info, 3500, pluginData.Name);
+                ToastManager.Show("Mod Deleted", $"Removed \"{deletedDisplayName}\" and all staging files", ToastType.Info, 3500, pluginData.Name);
             };
 
             return deleteButton;

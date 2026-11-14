@@ -44,6 +44,8 @@ namespace Crescent.Plugins
 
         [JsonIgnore] public virtual int ModCount => SelectedProfile?.mods.Count ?? 0;
 
+        [JsonIgnore] public virtual Deployer Deployer { get; set; }
+
         [JsonIgnore] public ProfileData SelectedProfile
         {
             get
@@ -63,6 +65,7 @@ namespace Crescent.Plugins
             }
             set => selectedProfileName = value.name;
         }
+
         [JsonIgnore] public List<ProfileData> Profiles
         {
             get
@@ -79,6 +82,11 @@ namespace Crescent.Plugins
         [JsonIgnore] public abstract Theme Theme { get; }
         [JsonIgnore] public abstract API API { get; }
 
+        protected PluginData()
+        {
+            Deployer = new FileDeployer(this);
+        }
+
         #region Window Functions
 
         public static Func<int, int, string, string, Task>? OnProgressWindowUpdate { get; set; }
@@ -87,6 +95,37 @@ namespace Crescent.Plugins
 
         public static Func<Dictionary<string, List<ModData>>, Task<bool>>? OnConflictResolve { get; set; }
         public static Func<string, string, Task<string>>? OnOverlapConfirm { get; set; }
+
+        public static Action<string, string, string, int, string>? OnToastShow { get; set; }
+        public static Action<string, string, string, double, bool>? OnToastProgress { get; set; }
+        public static Action<double, double, string, string>? OnToastProgressUpdate { get; set; }
+        public static Action<string, string, string, int, string>? OnToastProgressComplete { get; set; }
+        public static Action? OnToastProgressClose { get; set; }
+
+        public static void ShowToast(string title, string message, string toastType = "Info", int duration = 4000, string detail = "")
+        {
+            OnToastShow?.Invoke(title, message, toastType, duration, detail);
+        }
+
+        public static void ShowProgressToast(string title, string message, string detail = "", double percentage = 0, bool isIndeterminate = false)
+        {
+            OnToastProgress?.Invoke(title, message, detail, percentage, isIndeterminate);
+        }
+
+        public static void UpdateProgressToast(double current, double total, string modName, string targetFile = "")
+        {
+            OnToastProgressUpdate?.Invoke(current, total, modName, targetFile);
+        }
+
+        public static void CompleteProgressToast(string title, string message, string toastType = "Success", int duration = 4500, string detail = "")
+        {
+            OnToastProgressComplete?.Invoke(title, message, toastType, duration, detail);
+        }
+
+        public static void CloseProgressToast()
+        {
+            OnToastProgressClose?.Invoke();
+        }
 
         #endregion
 
@@ -97,7 +136,7 @@ namespace Crescent.Plugins
             string directoryPath = Path.Combine(Runtime.DataPath, "Games", Name);
             if (!Directory.Exists(directoryPath)) Directory.CreateDirectory(directoryPath);
             string filePath = Path.Combine(directoryPath, $"{Name.ToLower().Replace(" ", "")}.sav");
-            await FileManager.WriteJson(filePath, (dynamic)this);
+            await FileManager.WriteJsonAsync(filePath, (dynamic)this);
         }
 
         public virtual Process? Launch() => Process.Start(new ProcessStartInfo(ExePath)
@@ -107,18 +146,19 @@ namespace Crescent.Plugins
 
         public Dictionary<string, List<ModData>> GetConflicts()
         {
-            Dictionary<string, List<ModData>> files = new();
+            Dictionary<string, List<ModData>> files = new(StringComparer.OrdinalIgnoreCase);
             foreach (ModData modData in installedMods)
             {
                 if (!SelectedProfile.IsModEnabled(modData)) continue;
                 foreach (string fileItem in modData.ownedFiles)
                 {
                     if (!files.ContainsKey(fileItem)) files[fileItem] = new();
-                    if (!files[fileItem].Any(existingMod => string.Equals(existingMod.modName, modData.modName, StringComparison.OrdinalIgnoreCase))) files[fileItem].Add(modData);
+                    if (!files[fileItem].Any(existingMod => string.Equals(existingMod.modName, modData.modName, StringComparison.OrdinalIgnoreCase)))
+                        files[fileItem].Add(modData);
                 }
             }
 
-            Dictionary<string, List<ModData>> conflicts = new();
+            Dictionary<string, List<ModData>> conflicts = new(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, List<ModData>> filePair in files)
                 if (filePair.Value.Count > 1)
                     conflicts[filePair.Key] = filePair.Value;
@@ -196,6 +236,13 @@ namespace Crescent.Plugins
 
         #region Deployment & Withdrawl
 
+        public void SetLoadOrder()
+        {
+            List<ModData> ordered = installedMods.OrderBy(mod => mod.loadOrder < 0 ? int.MaxValue : mod.loadOrder).ThenByDescending(IsCoreMod).ToList();
+            for (int index = 0; index < ordered.Count; index++)
+                ordered[index].loadOrder = index;
+        }
+
         public void SetDeploymentStatus(DeploymentState state, string statusMessage)
         {
             deploymentState = state;
@@ -218,9 +265,11 @@ namespace Crescent.Plugins
             });
         }
 
-        public abstract Task Deploy();
-        public abstract void Withdraw();
-        public abstract void WithdrawMod(ModData modData);
+        public virtual async Task Deploy() => await Deployer.Deploy();
+
+        public virtual void Withdraw() => Deployer.Withdraw();
+
+        public virtual void WithdrawMod(ModData modData) => Deployer.WithdrawMod(modData);
 
         #endregion
 

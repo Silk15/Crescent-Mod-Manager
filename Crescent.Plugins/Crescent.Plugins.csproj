@@ -14,8 +14,15 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Crescent.APIs.NexusMods\Crescent.APIs.NexusMods.csproj" />
+      <ProjectReference Include="..\Crescent.IO\Crescent.IO.csproj" />
       <ProjectReference Include="..\Crescent.Json.Serialization\Crescent.Json.Serialization.csproj" />
       <ProjectReference Include="..\Crescent\Crescent.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="SharpCompress">
+        <HintPath>..\..\..\..\Pictures\Crescent Mod Manager\Managed\SharpCompress.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
 </Project>

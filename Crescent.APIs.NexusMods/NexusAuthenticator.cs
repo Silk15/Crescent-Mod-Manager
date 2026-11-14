@@ -30,11 +30,11 @@ namespace Crescent.APIs.NexusMods
             {
                 updateTask?.Invoke("Loading Nexus API Key...");
                 string settingsPath = Path.Combine(ApiPath);
-                if (File.Exists(settingsPath)) ApiKey = await FileManager.ReadJson<ApiKey>(settingsPath);
+                if (File.Exists(settingsPath)) ApiKey = await FileManager.ReadJsonAsync<ApiKey>(settingsPath);
                 else
                 {
                     ApiKey = new ApiKey();
-                    await FileManager.WriteJson(ApiPath, ApiKey);
+                    await FileManager.WriteJsonAsync(ApiPath, ApiKey);
                 }
             }
         }
@@ -67,7 +67,7 @@ namespace Crescent.APIs.NexusMods
                         ApiKey.key = string.Empty;
                         UserProfile = null;
                         UserAvatarBytes = null;
-                        await FileManager.WriteJson(ApiPath, ApiKey);
+                        await FileManager.WriteJsonAsync(ApiPath, ApiKey);
                     }
                 }
                 catch (Exception ex)

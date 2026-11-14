@@ -19,9 +19,9 @@ namespace Crescent.Json.Serialization
             return jsonSerializerSettings;
         }
 
-        #region Json Manipulation
+        #region Asynchronous Utilities
 
-        public static async Task<T> ReadJson<T>(string filePath)
+        public static async Task<T?> ReadJsonAsync<T>(string filePath)
         {
             if (!File.Exists(filePath))
             {
@@ -49,29 +49,10 @@ namespace Crescent.Json.Serialization
                 Logger.Log($"Caught exception deserializing file at {filePath}:\n\n{exception.Message}\n{exception.StackTrace}");
             }
 
-            return default!;
+            return default;
         }
-
-        public static async Task WriteJson<T>(string filePath, T obj)
-        {
-            if (typeof(T).IsAbstract)
-            {
-                Logger.Log($"Cannot serialize abstract type {typeof(T).FullName}!");
-                return;
-            }
-
-            try
-            {
-                string json = JsonConvert.SerializeObject(obj, GetJsonSerializerSettings());
-                if (!string.IsNullOrEmpty(json)) await File.WriteAllTextAsync(filePath, json);
-            }
-            catch (Exception exception)
-            {
-                Logger.Log($"Caught exception serializing file at {filePath}\n\n{exception.Message}\n{exception.StackTrace}");
-            }
-        }
-
-        public static async Task<object?> ReadJson(Type type, string filePath)
+        
+        public static async Task<object?> ReadJsonAsync(Type type, string filePath)
         {
             if (!File.Exists(filePath))
             {
@@ -98,6 +79,79 @@ namespace Crescent.Json.Serialization
             return null;
         }
 
+        public static async Task WriteJsonAsync<T>(string filePath, T obj)
+        {
+            if (typeof(T).IsAbstract)
+            {
+                Logger.Log($"Cannot serialize abstract type {typeof(T).FullName}!");
+                return;
+            }
+
+            try
+            {
+                string json = JsonConvert.SerializeObject(obj, GetJsonSerializerSettings());
+                if (!string.IsNullOrEmpty(json)) await File.WriteAllTextAsync(filePath, json);
+            }
+            catch (Exception exception)
+            {
+                Logger.Log($"Caught exception serializing file at {filePath}\n\n{exception.Message}\n{exception.StackTrace}");
+            }
+        }
+        
+        #endregion
+
+        #region Synchronous Utilities
+
+        public static T? ReadJson<T>(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                Logger.Log($"File {filePath} does not exist!");
+                return default!;
+            }
+
+            if (typeof(T).IsAbstract)
+            {
+                Logger.Log($"Cannot deserialize abstract type {typeof(T).FullName}!");
+                return default!;
+            }
+
+            try
+            {
+                string text = File.ReadAllText(filePath);
+                if (!string.IsNullOrEmpty(text))
+                {
+                    T? obj = JsonConvert.DeserializeObject<T>(text, GetJsonSerializerSettings());
+                    if (obj != null) return obj;
+                }
+            }
+            catch (Exception exception)
+            {
+                Logger.Log($"Caught exception deserializing file at {filePath}:\n\n{exception.Message}\n{exception.StackTrace}");
+            }
+
+            return default;
+        }
+
+        public static void WriteJson<T>(string filePath, T obj)
+        {
+            if (typeof(T).IsAbstract)
+            {
+                Logger.Log($"Cannot serialize abstract type {typeof(T).FullName}!");
+                return;
+            }
+
+            try
+            {
+                string json = JsonConvert.SerializeObject(obj, GetJsonSerializerSettings());
+                if (!string.IsNullOrEmpty(json)) File.WriteAllTextAsync(filePath, json);
+            }
+            catch (Exception exception)
+            {
+                Logger.Log($"Caught exception serializing file at {filePath}\n\n{exception.Message}\n{exception.StackTrace}");
+            }
+        }
+        
         public static void DeleteJson(string filePath)
         {
             if (!File.Exists(filePath))
@@ -108,7 +162,7 @@ namespace Crescent.Json.Serialization
 
             File.Delete(filePath);
         }
-
+        
         #endregion
     }
 }

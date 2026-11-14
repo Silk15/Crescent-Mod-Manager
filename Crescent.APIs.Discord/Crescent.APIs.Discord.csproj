@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Crescent.APIs.NexusMods\Crescent.APIs.NexusMods.csproj" />
+        <ProjectReference Include="..\Crescent.Plugins\Crescent.Plugins.csproj" />
+        <ProjectReference Include="..\Crescent.Utilities\Crescent.Utilities.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <AvaloniaResource Include="Assets\**"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+    </ItemGroup>
+</Project>

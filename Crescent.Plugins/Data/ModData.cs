@@ -27,6 +27,7 @@ namespace Crescent.Plugins
 
         public bool isDeployed;
         public bool isManual;
+        public int loadOrder = -1;
         public List<string> ownedFiles = new();
         public List<string> requirementIds = new();
 

@@ -4,6 +4,8 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
+using Crescent.APIs.Discord;
 using Crescent.Plugins;
 
 namespace Crescent.UI
@@ -22,11 +24,13 @@ namespace Crescent.UI
         public PluginData? subscribedGame;
 
         public SidebarOverlay? sidebarOverlay;
+        public OverlaySeparator? overlaySeparator;
         public ToolbarOverlay? toolbarOverlay;
         public LibraryPanel? libraryPanel;
+        public SettingsPanel? settingsPanel;
         public ToastOverlay? toastOverlay;
 
-        private DeploymentState lastObservedState = DeploymentState.NotDeployed;
+        public DeploymentState lastObservedState = DeploymentState.NotDeployed;
 
         public MainWindow()
         {
@@ -41,6 +45,9 @@ namespace Crescent.UI
                 Foreground = Brushes.White;
                 Content = GetMainGrid();
                 Icon = new WindowIcon(AssetLoader.Open(new Uri(IconUri)));
+
+                SetPluginCallbacks();
+                SetNxmHandling();
             }
             catch (Exception ex)
             {
@@ -60,21 +67,82 @@ namespace Crescent.UI
             }
         }
 
+        public void SetPluginCallbacks()
+        {
+            PluginData.OnProgressWindowOpen = () => Task.CompletedTask;
+            PluginData.OnProgressWindowUpdate = (current, total, modName, targetFile) =>
+            {
+                ToastManager.UpdateProgress(current, total, modName, targetFile);
+                return Task.CompletedTask;
+            };
+            PluginData.OnProgressWindowClose = () =>
+            {
+                ToastManager.OnProgressDialogClosed();
+                return Task.CompletedTask;
+            };
+
+            PluginData.OnConflictResolve = async conflicts =>
+            {
+                if (Settings.Instance.autoResolveConflicts) return true;
+
+                bool resolved = false;
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    ConflictReportDialog conflictDialog = new(selectedGame, conflicts);
+                    await conflictDialog.ShowDialog(this);
+                    resolved = conflictDialog.conflictsResolved;
+                });
+
+                return resolved;
+            };
+        }
+
+        public void SetNxmHandling()
+        {
+            if (Settings.Instance.autoRegisterNxm && !NxmProtocolHandler.IsProtocolRegistered())
+                NxmProtocolHandler.RegisterProtocol(false);
+
+            NxmProtocolHandler.StartPipeServer();
+            NxmProtocolHandler.onModDownloaded += plugin =>
+            {
+                if (selectedGame == plugin && sidebarOverlay != null)
+                {
+                    ModsTab? modsTab = sidebarOverlay.GetTab<ModsTab>();
+                    modsTab?.Refresh();
+                }
+            };
+
+            string[] commandLineArgs = Environment.GetCommandLineArgs();
+            string? startupNxm = commandLineArgs.FirstOrDefault(arg => arg.StartsWith("nxm://", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(startupNxm)) _ = NxmProtocolHandler.DownloadUrlOrNxmAsync(startupNxm);
+        }
+
+        public void SetSidebarVisible(bool isVisible)
+        {
+            if (sidebarOverlay != null) sidebarOverlay.IsVisible = isVisible;
+            if (overlaySeparator != null) overlaySeparator.IsVisible = isVisible;
+        }
+
         public void ShowLibrary()
         {
-            if (libraryScrollViewer == null || libraryPanel == null) return;
-            libraryPanel.onPluginClicked -= OnPluginClicked;
+            if (libraryScrollViewer == null) return;
+            if (libraryPanel != null) libraryPanel.onPluginClicked -= OnPluginClicked;
             libraryPanel = new();
             libraryScrollViewer.Content = libraryPanel;
             libraryPanel.onPluginClicked += OnPluginClicked;
             UpdateBackground();
-            if (sidebarOverlay == null)
-            {
-                Logger.Warn("No sidebar to update :(");
-                return;
-            }
+            SetSidebarVisible(false);
+            DiscordManager.SetIdle();
+        }
 
-            sidebarOverlay.IsVisible = false;
+        public void ShowSettings()
+        {
+            if (libraryScrollViewer == null) return;
+            settingsPanel = new(this);
+            libraryScrollViewer.Content = settingsPanel;
+            UpdateBackground();
+            SetSidebarVisible(false);
+            DiscordManager.SetIdle();
         }
 
         public void TryUpdateDeploymentStatus(PluginData plugin)
@@ -89,7 +157,7 @@ namespace Crescent.UI
                 if (lastObservedState == DeploymentState.Deploying)
                     SidebarOverlay.PresentDeploymentToast(plugin);
                 else
-                    ToastManager.CompleteProgress("Mods Withdrawn", plugin.DeploymentStatus.Replace("\n", " "), ToastType.Info, 4000, $"{plugin.Name} • Profile: {plugin.SelectedProfile.name}");
+                    ToastManager.CompleteProgress("Mods Withdrawn", plugin.DeploymentStatus.Replace("\n", " "), ToastType.Info, 4000, $"{plugin.Name} • ({plugin.SelectedProfile.name})");
             }
 
             lastObservedState = currentState;
@@ -178,7 +246,7 @@ namespace Crescent.UI
 
             Grid bodyGrid = new();
             bodyGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition(280, GridUnitType.Pixel));
+            bodyGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
             bodyGrid.Children.Add(GetContentGrid());
             Grid.SetColumn(contentGrid!, 0);
@@ -186,7 +254,7 @@ namespace Crescent.UI
             bodyGrid.Children.Add(GetSidebarOverlay());
             Grid.SetColumn(sidebarOverlay!, 1);
 
-            OverlaySeparator overlaySeparator = new(OverlaySeparator.Mode.Vertical);
+            overlaySeparator = new(OverlaySeparator.Mode.Vertical);
             sidebarOverlay!.overlaySeparator = overlaySeparator;
             bodyGrid.Children.Add(overlaySeparator);
             Grid.SetColumn(overlaySeparator, 1);
@@ -198,7 +266,7 @@ namespace Crescent.UI
             mainGrid.Children.Add(toastOverlay);
             Grid.SetRowSpan(toastOverlay, 2);
 
-            sidebarOverlay.IsVisible = false;
+            SetSidebarVisible(false);
             return mainGrid;
         }
 
@@ -216,7 +284,7 @@ namespace Crescent.UI
             libraryScrollViewer = new()
             {
                 Margin = new Thickness(0),
-                Content = libraryPanel,
+                Content = libraryPanel
             };
 
             return libraryScrollViewer;
@@ -224,7 +292,10 @@ namespace Crescent.UI
 
         public SidebarOverlay GetSidebarOverlay()
         {
-            sidebarOverlay = new();
+            sidebarOverlay = new()
+            {
+                Width = 280
+            };
             sidebarOverlay.onGameSelected += OnGameSelected;
             sidebarOverlay.onTabOpened += OnTabOpened;
             return sidebarOverlay;
@@ -234,7 +305,7 @@ namespace Crescent.UI
 
         #region Events
 
-        private void OnPluginClicked(PluginData plugin)
+        public void OnPluginClicked(PluginData plugin)
         {
             selectedGame = plugin;
             if (sidebarOverlay == null)
@@ -243,12 +314,13 @@ namespace Crescent.UI
                 return;
             }
 
-            sidebarOverlay.IsVisible = true;
+            SetSidebarVisible(true);
             sidebarOverlay.ShowGameSidebar(plugin);
             sidebarOverlay.OpenTab<ModsTab>();
+            DiscordManager.SetModding(plugin);
         }
 
-        private void OnGameSelected(PluginData plugin)
+        public void OnGameSelected(PluginData plugin)
         {
             selectedGame = plugin;
             lastObservedState = plugin.deploymentState;
@@ -257,7 +329,7 @@ namespace Crescent.UI
             subscribedGame.onDeploymentStatusChanged += OnDeploymentStatusChanged;
         }
 
-        private void OnTabOpened(PluginData plugin, ISidebarTab activeTab)
+        public void OnTabOpened(PluginData plugin, ISidebarTab activeTab)
         {
             if (libraryScrollViewer == null) return;
             selectedGame = plugin;
@@ -265,7 +337,7 @@ namespace Crescent.UI
             UpdateBackground(plugin);
         }
 
-        private void OnDeploymentStatusChanged(PluginData plugin) => Avalonia.Threading.Dispatcher.UIThread.Post(() => TryUpdateDeploymentStatus(plugin));
+        public void OnDeploymentStatusChanged(PluginData plugin) => Dispatcher.UIThread.Post(() => TryUpdateDeploymentStatus(plugin));
 
         #endregion
     }

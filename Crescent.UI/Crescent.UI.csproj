@@ -14,9 +14,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Crescent.APIs.Discord\Crescent.APIs.Discord.csproj" />
       <ProjectReference Include="..\Crescent.APIs.NexusMods\Crescent.APIs.NexusMods.csproj" />
       <ProjectReference Include="..\Crescent.Plugins\Crescent.Plugins.csproj" />
       <ProjectReference Include="..\Crescent.Utilities\Crescent.Utilities.csproj" />
+      <ProjectReference Include="..\Crescent.Versioning\Crescent.Versioning.csproj" />
     </ItemGroup>
 
 

@@ -8,12 +8,14 @@ using Crescent.Utilities;
 
 namespace Crescent.UI
 {
-    public class RenderedMod : Grid
+    public class RenderedMod : Border
     {
         public PluginData pluginData;
         public ModData modData;
         public ModsTab modsTab;
+        public string cleanName;
 
+        public Grid rowGrid;
         public ToggleSwitch modToggle;
         public TextBlock nameBlock;
         public Control updateControl;
@@ -53,58 +55,69 @@ namespace Crescent.UI
             this.pluginData = pluginData;
             this.modData = modData;
             this.modsTab = modsTab;
+            cleanName = modData.DisplayName.Cleaned();
 
-            ColumnDefinitions.Add(new ColumnDefinition(new GridLength(55, GridUnitType.Pixel)));
-            ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
-            ColumnDefinitions.Add(new ColumnDefinition(new GridLength(95, GridUnitType.Pixel)));
-            ColumnDefinitions.Add(new ColumnDefinition(new GridLength(90, GridUnitType.Pixel)));
-            ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-            ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            Background = Colors.Overlay;
+            CornerRadius = new CornerRadius(6);
+            Padding = new Thickness(12, 8);
+
+            rowGrid = new();
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(55, GridUnitType.Pixel)));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(95, GridUnitType.Pixel)));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(90, GridUnitType.Pixel)));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
             modToggle = GetModToggle();
-            SetColumn(modToggle, 0);
+            Grid.SetColumn(modToggle, 0);
 
             nameBlock = GetNameTextBlock();
-            SetColumn(nameBlock, 1);
+            Grid.SetColumn(nameBlock, 1);
 
             updateControl = GetUpdateControl();
-            SetColumn(updateControl, 2);
+            Grid.SetColumn(updateControl, 2);
 
             versionBlock = GetVersionTextBlock();
-            SetColumn(versionBlock, 3);
+            Grid.SetColumn(versionBlock, 3);
 
             manualButton = GetManualButton();
-            SetColumn(manualButton, 4);
+            Grid.SetColumn(manualButton, 4);
 
             menuButton = GetMenuButton();
-            SetColumn(menuButton, 5);
+            Grid.SetColumn(menuButton, 5);
 
-            Children.Add(modToggle);
-            Children.Add(nameBlock);
-            Children.Add(updateControl);
-            Children.Add(versionBlock);
-            Children.Add(manualButton);
-            Children.Add(menuButton);
+            rowGrid.Children.Add(modToggle);
+            rowGrid.Children.Add(nameBlock);
+            rowGrid.Children.Add(updateControl);
+            rowGrid.Children.Add(versionBlock);
+            rowGrid.Children.Add(manualButton);
+            rowGrid.Children.Add(menuButton);
+
+            Child = rowGrid;
         }
 
         public void UpdateControl()
         {
-            if (Children.Contains(updateControl)) Children.Remove(updateControl);
+            if (rowGrid.Children.Contains(updateControl)) rowGrid.Children.Remove(updateControl);
             updateControl = GetUpdateControl();
-            SetColumn(updateControl, 3);
-            Children.Add(updateControl);
+            Grid.SetColumn(updateControl, 2);
+            rowGrid.Children.Add(updateControl);
         }
 
         public void RefreshDeployedState()
         {
             bool isEnabled = pluginData.SelectedProfile.IsModEnabled(modData);
+            if (modToggle.IsChecked != isEnabled) modToggle.IsChecked = isEnabled;
             nameBlock.Foreground = isEnabled ? Brushes.White : Brushes.Gray;
+            IsManual = modData.isManual;
         }
 
         public void RefreshMod()
         {
+            cleanName = modData.DisplayName.Cleaned();
             Version = modData.version;
-            nameBlock.Text = modData.DisplayName.Cleaned();
+            nameBlock.Text = cleanName;
             RefreshDeployedState();
             UpdateControl();
         }
@@ -126,25 +139,26 @@ namespace Crescent.UI
             {
                 try
                 {
-                    toggleSwitch.IsEnabled = false;
                     bool isEnabled = toggleSwitch.IsChecked ?? false;
+                    if (pluginData.SelectedProfile.IsModEnabled(modData) == isEnabled) return;
+
+                    toggleSwitch.IsEnabled = false;
                     pluginData.SelectedProfile.SetModEnabled(modData, isEnabled);
                     nameBlock.Foreground = isEnabled ? Brushes.White : Brushes.Gray;
 
-                    string cleanName = modData.DisplayName.Cleaned();
                     if (isEnabled)
                     {
                         ToastManager.ShowProgress("Deploying Mod", $"Deploying {cleanName}...", pluginData.Name, 0, true);
                         await pluginData.Deploy();
                         await Task.Run(() => ModInteractionUtils.SyncModDeploymentState(pluginData, modData));
                         modsTab.RefreshDeployedStates();
-                        ToastManager.CompleteProgress("Mod Deployed", $"Deployed {cleanName}", ToastType.Success, 3000, $"{pluginData.Name} • {pluginData.SelectedProfile.name}");
+                        ToastManager.CompleteProgress("Mod Deployed", $"Deployed {cleanName}", ToastType.Success, 3000, $"{pluginData.Name} • ({pluginData.SelectedProfile.name})");
                     }
                     else
                     {
                         await Task.Run(() => ModInteractionUtils.WithdrawModFiles(pluginData, modData));
                         RefreshDeployedState();
-                        ToastManager.Show("Mod Withdrawn", $"Withdrew {cleanName}", ToastType.Info, 3000, $"{pluginData.Name} • {pluginData.SelectedProfile.name}");
+                        ToastManager.Show("Mod Withdrawn", $"Withdrew {cleanName}", ToastType.Info, 3000, $"{pluginData.Name} • ({pluginData.SelectedProfile.name})");
                     }
 
                     await pluginData.SaveAsync();
@@ -167,8 +181,9 @@ namespace Crescent.UI
             bool isEnabled = pluginData.SelectedProfile.IsModEnabled(modData);
             return new()
             {
-                Text = modData.DisplayName.Cleaned(),
+                Text = cleanName,
                 Foreground = isEnabled ? Brushes.White : Brushes.Gray,
+                FontWeight = FontWeight.SemiBold,
                 VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Margin = new Thickness(0, 0, 10, 0)
@@ -270,19 +285,20 @@ namespace Crescent.UI
                 HorizontalAlignment = HorizontalAlignment.Center
             };
 
-            if (!string.IsNullOrEmpty(cleanLatestVersion))
-                ToolTip.SetTip(updateButton, $"Update to v{cleanLatestVersion}");
-
+            if (!string.IsNullOrEmpty(cleanLatestVersion)) ToolTip.SetTip(updateButton, $"Update to v{cleanLatestVersion}");
             updateButton.onClick += async () =>
             {
                 try
                 {
-                    Window? window = TopLevel.GetTopLevel(modsTab) as Window;
-                    if (window != null)
+                    if (!Settings.Instance.skipUpdatePopup)
                     {
-                        ModUpdateDialog updateDialog = new(modData);
-                        await updateDialog.ShowDialog(window);
-                        if (!updateDialog.UpdateConfirmed) return;
+                        Window? window = TopLevel.GetTopLevel(modsTab) as Window;
+                        if (window != null)
+                        {
+                            ModUpdateDialog updateDialog = new(modData);
+                            await updateDialog.ShowDialog(window);
+                            if (!updateDialog.UpdateConfirmed) return;
+                        }
                     }
 
                     updateButton.IsEnabled = false;
@@ -322,6 +338,7 @@ namespace Crescent.UI
                     manualButton.IsEnabled = false;
 
                     await ModInteractionUtils.ToggleManualInstallAsync(pluginData, modData);
+                    RefreshDeployedState();
                     Dispatcher.UIThread.Post(() => modsTab.RenderMods());
                 }
                 catch (Exception exception)
@@ -346,9 +363,12 @@ namespace Crescent.UI
                 Margin = new Thickness(8, 0, 0, 0)
             };
 
-            ContextMenu contextMenu = ModContextMenu.Get(pluginData, modData, modsTab);
-            menuButton.ContextMenu = contextMenu;
-            menuButton.onClick += () => contextMenu.Open(menuButton);
+            menuButton.onClick += () =>
+            {
+                ContextMenu contextMenu = ModContextMenu.Get(pluginData, modData, modsTab);
+                menuButton.ContextMenu = contextMenu;
+                contextMenu.Open(menuButton);
+            };
 
             return menuButton;
         }

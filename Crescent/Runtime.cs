@@ -8,7 +8,7 @@ namespace Crescent
 {
     public static class Runtime
     {
-        public const string Version = "v1.2.2";
+        public const string Version = "v1.3.4";
         public static readonly string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create), "Crescent");
 
         public static readonly string PluginPath = Environment.ProcessPath.Replace("Managed\\Crescent.exe", "Plugins");
@@ -27,6 +27,20 @@ namespace Crescent
         
         public static async Task Main(string[] args)
         {
+            if (args.Length > 0 && args[0].StartsWith("nxm://", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    using System.IO.Pipes.NamedPipeClientStream client = new(".", "Crescent_NXM_Pipe", System.IO.Pipes.PipeDirection.Out);
+                    client.Connect(400);
+                    byte[] payload = Encoding.UTF8.GetBytes(args[0]);
+                    client.Write(payload, 0, payload.Length);
+                    client.Flush();
+                    return;
+                }
+                catch { }
+            }
+
             Logger.Log($"Exe Path = \"{Environment.ProcessPath}\"", false);
             Logger.Log($"Data Path = \"{DataPath}\"", false);
             await LoadAssembliesAsync();
@@ -163,29 +177,36 @@ namespace Crescent
             processBuilder.AppendLine("- Startup Processes");
             foreach (IStartupProcess startupProcess in StartupProcesses)
             {
-                processBuilder.AppendLine($"   - {startupProcess.GetType().Name}");
-                IEnumerable<IStartupTask> startupTasks = startupProcess.GetTasks();
-                int total = startupTasks.Count();
-                int completed = 0;
-
-                onProcessUpdated?.Invoke(startupProcess.GetTitle(completed, total));
-                foreach (IStartupTask startupTask in startupTasks)
+                try
                 {
-                    processBuilder.AppendLine($"        {startupTask.GetName()}");
-                    try
+                    processBuilder.AppendLine($"   - {startupProcess.GetType().Name}");
+                    IEnumerable<IStartupTask> startupTasks = startupProcess.GetTasks();
+                    int total = startupTasks.Count();
+                    int completed = 0;
+
+                    onProcessUpdated?.Invoke(startupProcess.GetTitle(completed, total));
+                    foreach (IStartupTask startupTask in startupTasks)
                     {
-                        completed++;
-                        await startupTask.ExecuteAsync(onTaskUpdated);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error(ex.ToString());
+                        processBuilder.AppendLine($"        {startupTask.GetName()}");
+                        try
+                        {
+                            completed++;
+                            await startupTask.ExecuteAsync(onTaskUpdated);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error(ex.ToString());
+                        }
+
+                        onProcessUpdated?.Invoke(startupProcess.GetTitle(completed, total));
                     }
 
                     onProcessUpdated?.Invoke(startupProcess.GetTitle(completed, total));
                 }
-                
-                onProcessUpdated?.Invoke(startupProcess.GetTitle(completed, total));
+                catch (Exception ex)
+                {
+                    Logger.Error($"Failed to run startup process {startupProcess.GetType().FullName}!\n{ex}");
+                }
             }
             
             Logger.Log(processBuilder.ToString(), false);

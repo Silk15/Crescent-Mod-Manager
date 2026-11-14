@@ -91,7 +91,7 @@ namespace Crescent.UI
 
             Opened += (_, _) =>
             {
-                if (ToastManager.IsInitialized) Hide();
+                if (ToastManager.Initialised) Hide();
             };
 
             Closed += (_, _) => ToastManager.OnProgressDialogClosed();
@@ -99,7 +99,7 @@ namespace Crescent.UI
 
         public void UpdateProgress(double current, double total, string modName, string targetDirectory)
         {
-            if (ToastManager.IsInitialized)
+            if (ToastManager.Initialised)
             {
                 if (IsVisible) Hide();
                 ToastManager.UpdateProgress(current, total, modName, targetDirectory);

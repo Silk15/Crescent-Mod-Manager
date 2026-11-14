@@ -5,25 +5,33 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Crescent.Plugins;
+using Crescent.Utilities;
 
 namespace Crescent.UI
 {
     public class ConflictReportDialog : Dialog
     {
+        public PluginData? pluginData;
         public Dictionary<string, List<ModData>> conflicts;
+        public Dictionary<string, ModData> selectedWinners = new(StringComparer.OrdinalIgnoreCase);
         public bool conflictsResolved;
 
-        public ConflictReportDialog(Dictionary<string, List<ModData>> conflicts)
+        public ConflictReportDialog(Dictionary<string, List<ModData>> conflicts) : this(null, conflicts)
         {
+        }
+
+        public ConflictReportDialog(PluginData? pluginData, Dictionary<string, List<ModData>> conflicts)
+        {
+            this.pluginData = pluginData;
             this.conflicts = conflicts;
-            Title = "Mod File Conflicts";
-            Width = 600;
+            Title = "Mod File Conflicts & Priority";
+            Width = 680;
             SizeToContent = SizeToContent.Height;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Background = Colors.MainGradient;
             CanResize = false;
             Icon = new WindowIcon(AssetLoader.Open(new Uri(MainWindow.IconUri)));
-            
+
             StackPanel mainPanel = new()
             {
                 Margin = new Thickness(20),
@@ -34,20 +42,20 @@ namespace Crescent.UI
 
             TextBlock titleBlock = new()
             {
-                Text = "File Overwrite & Conflict Resolution",
-                FontSize = 22,
+                Text = "File Conflict & Priority Resolution",
+                FontSize = 20,
                 FontWeight = FontWeight.Bold,
                 TextAlignment = TextAlignment.Center
             };
-            
+
             TextBlock infoBlock = new()
             {
-                Text = "The following files are modified by multiple enabled mods. Please review the conflicts below and choose how to proceed.",
+                Text = "Select which mod should win each conflicting file. Winning mods are automatically given higher load order priority so their files overwrite earlier ones.",
                 FontSize = 13,
                 Foreground = Brushes.LightGray,
                 TextWrapping = TextWrapping.Wrap
             };
-            
+
             mainPanel.Children.Add(titleBlock);
             mainPanel.Children.Add(infoBlock);
             mainPanel.Children.Add(GetConflictsScroll());
@@ -65,60 +73,97 @@ namespace Crescent.UI
             ScrollViewer conflictScrollViewer = new()
             {
                 Content = conflictListStack,
-                Height = 300,
+                Height = 320,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto
             };
 
             foreach (KeyValuePair<string, List<ModData>> pair in conflicts)
             {
+                string fileKey = pair.Key;
+                List<ModData> contendingMods = pair.Value.OrderBy(mod => mod.loadOrder).ToList();
+                ModData currentWinner = contendingMods.Last();
+                selectedWinners[fileKey] = currentWinner;
+
                 Border conflictBorder = new()
                 {
                     Background = Colors.Button,
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(10)
+                    CornerRadius = new CornerRadius(6),
+                    Padding = new Thickness(12, 10)
                 };
 
-                StackPanel conflictItemStack = new()
+                Grid itemGrid = new()
                 {
-                    Spacing = 5
+                    ColumnSpacing = 12
+                };
+                itemGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+                itemGrid.ColumnDefinitions.Add(new ColumnDefinition(220, GridUnitType.Pixel));
+
+                StackPanel fileStack = new()
+                {
+                    Spacing = 4,
+                    VerticalAlignment = VerticalAlignment.Center
                 };
 
-                conflictItemStack.Children.Add(new TextBlock
+                fileStack.Children.Add(new TextBlock
                 {
-                    Text = $"File: {pair.Key}",
+                    Text = fileKey,
                     FontWeight = FontWeight.Bold,
-                    Foreground = Brushes.Orange
+                    FontSize = 13,
+                    Foreground = Brushes.Orange,
+                    TextTrimming = TextTrimming.CharacterEllipsis
                 });
 
-                StackPanel modsStack = new()
+                string contendersText = string.Join(" vs ", contendingMods.Select(mod => mod.DisplayName.Cleaned()));
+                fileStack.Children.Add(new TextBlock
                 {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 10
+                    Text = contendersText,
+                    FontSize = 11,
+                    Foreground = Brushes.LightGray,
+                    TextTrimming = TextTrimming.CharacterEllipsis
+                });
+
+                ComboBox winnerSelector = new()
+                {
+                    ItemsSource = contendingMods.Select(mod => mod.DisplayName.Cleaned()).ToList(),
+                    SelectedIndex = contendingMods.Count - 1,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Height = 34
                 };
 
-                modsStack.Children.Add(new TextBlock
+                winnerSelector.SelectionChanged += (_, _) =>
                 {
-                    Text = "Conflicting Mods: ",
-                    Foreground = Brushes.LightGray
-                });
+                    int chosenIndex = winnerSelector.SelectedIndex;
+                    if (chosenIndex >= 0 && chosenIndex < contendingMods.Count)
+                        selectedWinners[fileKey] = contendingMods[chosenIndex];
+                };
 
-                for (int index = 0; index < pair.Value.Count; index++)
-                {
-                    ModData mod = pair.Value[index];
-                    modsStack.Children.Add(new TextBlock
-                    {
-                        Text = mod.DisplayName,
-                        FontWeight = FontWeight.SemiBold
-                    });
-                }
+                Grid.SetColumn(fileStack, 0);
+                Grid.SetColumn(winnerSelector, 1);
 
-                conflictItemStack.Children.Add(modsStack);
-                conflictBorder.Child = conflictItemStack;
+                itemGrid.Children.Add(fileStack);
+                itemGrid.Children.Add(winnerSelector);
+
+                conflictBorder.Child = itemGrid;
                 conflictListStack.Children.Add(conflictBorder);
             }
 
             return conflictScrollViewer;
+        }
+
+        private void ApplySelectedPriorities()
+        {
+            foreach (KeyValuePair<string, ModData> winnerPair in selectedWinners)
+            {
+                if (!conflicts.TryGetValue(winnerPair.Key, out List<ModData>? contenders)) continue;
+                ModData winner = winnerPair.Value;
+                int maxContenderOrder = contenders.Max(mod => mod.loadOrder);
+                if (winner.loadOrder <= maxContenderOrder)
+                    winner.loadOrder = maxContenderOrder + 1;
+            }
+
+            pluginData?.SetLoadOrder();
         }
 
         public StackPanel GetButtonPanel()
@@ -132,12 +177,13 @@ namespace Crescent.UI
 
             CrescentButton confirmButton = new(Colors.Green)
             {
-                Content = "Proceed with Deployment",
-                Width = 170
+                Content = "Apply Priorities & Proceed",
+                Width = 190
             };
 
             confirmButton.onClick += () =>
             {
+                ApplySelectedPriorities();
                 conflictsResolved = true;
                 Close();
             };
