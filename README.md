@@ -5,7 +5,6 @@ A lightweight mod manager capable of working with (almost) any game on Nexus Mod
 - [Stardew Valley](https://www.nexusmods.com/games/stardewvalley)
 - [Cyberpunk 2077](https://www.nexusmods.com/games/cyberpunk2077)
 
-> *Note, install process is kinda iffy at the moment. I'll set up an installer for everything eventually maybe (or not)*
 ## Install
 - Crescent uses Windows Symlinks to create "pointers" to mod files and assets. Please enable the setting below before continuing:
   - Open the Windows Settings app.
@@ -13,15 +12,13 @@ A lightweight mod manager capable of working with (almost) any game on Nexus Mod
   - Turn **Developer Mode** on and accept the prompt
   
 - Download the latest release [here](https://github.com/Silk15/Crescent-Mod-Manager/releases/tag/MainFiles) and extract it somewhere on your PC.
-  - Navigate to `Crescent Mod Manager\Plugins` and install your required games from [here](https://github.com/Silk15/Crescent-Mod-Manager/tree/plugins)
-  - Navigate to `Crescent Mod Manager\Managed` and scroll until you see the `.exe`
+- Launch Crescent
+- Press the `+` on the game(s) you'd like to install and restart Crescent
  
 And that's it. When you start Crescent you'll be able to set staging and executable paths like any other mod manager, as well as import profiles.
 
-
-<img width="1495" height="931" alt="Screenshot 2026-11-01 220946" src="https://github.com/user-attachments/assets/cf14e344-d8eb-4d56-9d14-aa6e898ffd09" />
-<img width="1915" height="1079" alt="image" src="https://github.com/user-attachments/assets/ebf57137-3ea3-4f82-ab77-2bcf3fbc95de" />
-
+<img width="1919" height="1079" alt="Screenshot 2026-11-13 195709" src="https://github.com/user-attachments/assets/3c0f03c7-49c9-4d06-9109-2b3fd8dc2cb2" />
+<img width="1919" height="1079" alt="Screenshot 2026-11-13 195659" src="https://github.com/user-attachments/assets/cb3699db-8748-4c79-b98a-e55aa64dc348" />
 
 > *Parts of this project were written with AI and/or AI Assistance, such as:*
 > - *The **base** of the UI*
