@@ -14,11 +14,8 @@ namespace Crescent.IO
             try
             {
                 string? targetDirectory = Path.GetDirectoryName(targetFile);
-                if (!string.IsNullOrEmpty(targetDirectory) && !Directory.Exists(targetDirectory))
-                    Directory.CreateDirectory(targetDirectory);
-
+                if (!string.IsNullOrEmpty(targetDirectory) && !Directory.Exists(targetDirectory)) Directory.CreateDirectory(targetDirectory);
                 DeleteFile(targetFile);
-
                 if (forceCopy)
                 {
                     File.Copy(sourceFile, targetFile, true);

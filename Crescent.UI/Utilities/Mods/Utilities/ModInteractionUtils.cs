@@ -22,8 +22,7 @@ namespace Crescent.UI
                 for (int index = 0; index < modData.ownedFiles.Count; index++)
                 {
                     string deployedFile = Path.Combine(plugin.DeploymentPath, modData.ownedFiles[index]);
-                    FileInfo info = new(deployedFile);
-                    if (!info.Exists && info.LinkTarget == null && !Path.Exists(deployedFile))
+                    if (!File.Exists(deployedFile) && !Path.Exists(deployedFile))
                     {
                         modData.isDeployed = false;
                         return;
@@ -48,13 +47,12 @@ namespace Crescent.UI
                 return;
             }
 
-            List<string> discoveredRelativeFiles = new();
+            List<string> discoveredRelativeFiles = new(stagingFiles.Length);
             for (int index = 0; index < stagingFiles.Length; index++)
             {
                 string relativePath = Path.GetRelativePath(stagingFolder, stagingFiles[index]);
                 string deployedFile = Path.Combine(plugin.DeploymentPath, relativePath);
-                FileInfo info = new(deployedFile);
-                if (!info.Exists && info.LinkTarget == null && !Path.Exists(deployedFile))
+                if (!File.Exists(deployedFile) && !Path.Exists(deployedFile))
                 {
                     modData.isDeployed = false;
                     return;
@@ -161,10 +159,7 @@ namespace Crescent.UI
                 }
 
                 string fallbackName = $"{cleanDisplayName}.zip";
-                Progress<double> downloadProgress = new(percent =>
-                {
-                    ToastManager.ShowProgress("Updating Mod", $"Downloading {cleanDisplayName} ({percent:0}%)...", $"v{modData.version} → v{modData.LatestVersion}", percent, false);
-                });
+                Progress<double> downloadProgress = new(percent => { ToastManager.ShowProgress("Updating Mod", $"Downloading {cleanDisplayName} ({percent:0}%)...", $"v{modData.version} → v{modData.LatestVersion}", percent, false); });
 
                 string? tempFilePath = await NexusUtils.DownloadFileAsync(downloadUrl, tempDownloadFolder, fallbackName, downloadProgress);
                 if (string.IsNullOrEmpty(tempFilePath) || !File.Exists(tempFilePath))

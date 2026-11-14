@@ -15,7 +15,7 @@ namespace Crescent.Versioning
             return client;
         }
 
-        public static async Task<VersionInfo?> GetLatestReleaseAsync()
+        public static async Task<Version?> GetLatestReleaseAsync()
         {
             try
             {

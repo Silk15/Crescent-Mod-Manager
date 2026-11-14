@@ -127,7 +127,6 @@ namespace Crescent.UI
 
             Grid.SetColumn(contentStack, 1);
             rootGrid.Children.Add(contentStack);
-
             Child = rootGrid;
         }
 

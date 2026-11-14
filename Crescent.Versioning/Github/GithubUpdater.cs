@@ -5,15 +5,15 @@ namespace Crescent.Versioning
 {
     public class GithubUpdater
     {
-        public static VersionInfo? availableManagerUpdate;
+        public static Version? availableManagerUpdate;
         
         public static string StagingRoot => Path.Combine(Runtime.DataPath, "Updates");
         public static string InstallRoot => Path.GetFullPath(Path.Combine(Runtime.ManagedPath, ".."));
 
-        public static async Task<VersionInfo?> CheckManagerUpdateAsync()
+        public static async Task<Version?> CheckManagerUpdateAsync()
         {
-            VersionInfo? latestRelease = await GithubClient.GetLatestReleaseAsync();
-            if (latestRelease != null && VersionInfo.IsNewerVersion(latestRelease.version, Runtime.Version))
+            Version? latestRelease = await GithubClient.GetLatestReleaseAsync();
+            if (latestRelease != null && Version.IsNewerVersion(latestRelease.version, Runtime.Version))
             {
                 availableManagerUpdate = latestRelease;
                 return latestRelease;
@@ -87,7 +87,7 @@ namespace Crescent.Versioning
             }
         }
 
-        public static async Task<bool> UpdateAsync(VersionInfo release, Action<long, long>? onDownloadProgress = null, Action<string>? onStageStatus = null)
+        public static async Task<bool> UpdateAsync(Version release, Action<long, long>? onDownloadProgress = null, Action<string>? onStageStatus = null)
         {
             try
             {

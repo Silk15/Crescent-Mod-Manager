@@ -4,20 +4,21 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Crescent.Versioning;
+using Version = Crescent.Versioning.Version;
 
 namespace Crescent.UI
 {
     public class UpdateDialog : Window
     {
-        public VersionInfo versionInfo;
+        public Version version;
         public bool isPostUpdate;
 
-        public UpdateDialog(VersionInfo versionInfo, bool isPostUpdate)
+        public UpdateDialog(Version version, bool isPostUpdate)
         {
-            this.versionInfo = versionInfo;
+            this.version = version;
             this.isPostUpdate = isPostUpdate;
 
-            Title = isPostUpdate ? $"Updated to Crescent {versionInfo.version}" : $"Update Available ({versionInfo.version})";
+            Title = isPostUpdate ? $"Updated to Crescent {version.version}" : $"Update Available ({version.version})";
             Width = 500;
             Height = 360;
             CanResize = false;
@@ -42,14 +43,14 @@ namespace Crescent.UI
 
             TextBlock headerBlock = new()
             {
-                Text = isPostUpdate ? $"Welcome to Crescent {versionInfo.version}" : $"Crescent {versionInfo.version} is Available",
+                Text = isPostUpdate ? $"Welcome to Crescent {version.version}" : $"Crescent {version.version} is Available",
                 FontSize = 20,
                 FontWeight = FontWeight.Bold,
                 Foreground = Brushes.White
             };
             Grid.SetRow(headerBlock, 0);
 
-            string subtitleText = isPostUpdate ? $"Successfully updated from {VersionTracker.Instance.previousVersion} to {versionInfo.version}" : $"You are currently running {Runtime.Version}";
+            string subtitleText = isPostUpdate ? $"Successfully updated from {VersionTracker.Instance.previousVersion} to {version.version}" : $"You are currently running {Runtime.Version}";
 
             TextBlock subtitleBlock = new()
             {
@@ -71,7 +72,7 @@ namespace Crescent.UI
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     Content = new TextBlock
                     {
-                        Text = string.IsNullOrWhiteSpace(versionInfo.releaseNotes) ? "No changelog provided for this release" : versionInfo.releaseNotes,
+                        Text = string.IsNullOrWhiteSpace(version.releaseNotes) ? "No changelog provided for this release" : version.releaseNotes,
                         FontSize = 13,
                         Foreground = Brushes.LightGray,
                         TextWrapping = TextWrapping.Wrap
@@ -126,7 +127,7 @@ namespace Crescent.UI
                     updateButton.IsEnabled = false;
                     laterButton.IsEnabled = false;
                     Close();
-                    await RunManagerUpdateWithToastsAsync(versionInfo);
+                    await RunManagerUpdateWithToastsAsync(version);
                 };
 
                 buttonRow.Children.Add(laterButton);
@@ -142,7 +143,7 @@ namespace Crescent.UI
             return rootGrid;
         }
 
-        public static async Task RunManagerUpdateWithToastsAsync(VersionInfo release)
+        public static async Task RunManagerUpdateWithToastsAsync(Version release)
         {
             ToastManager.ShowProgress("Updating Crescent", $"Downloading {release.version}...", release.assetName, 0, false);
             bool success = await GithubUpdater.UpdateAsync(release, (downloadedBytes, totalBytes) =>

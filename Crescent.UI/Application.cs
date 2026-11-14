@@ -8,6 +8,7 @@ using Crescent.APIs.Discord;
 using Crescent.Plugins;
 using Crescent.Utilities;
 using Crescent.Versioning;
+using Version = Crescent.Versioning.Version;
 
 namespace Crescent.UI
 {
@@ -160,7 +161,7 @@ namespace Crescent.UI
                 VersionTracker tracker = VersionTracker.Instance;
                 if (tracker.showPostUpdatePopup)
                 {
-                    VersionInfo updatedInfo = new()
+                    Version updated = new()
                     {
                         name = $"Crescent {Runtime.Version}",
                         version = Runtime.Version,
@@ -168,13 +169,13 @@ namespace Crescent.UI
                     };
 
                     ToastManager.Show("Crescent Updated", $"Now running Crescent {Runtime.Version}", ToastType.Success, 4000);
-                    UpdateDialog postUpdateDialog = new(updatedInfo, true);
+                    UpdateDialog postUpdateDialog = new(updated, true);
                     await postUpdateDialog.ShowDialog(mainWindow);
                 }
 
                 if (Settings.Instance.checkUpdatesOnLaunch)
                 {
-                    VersionInfo? remoteRelease = await GithubUpdater.CheckManagerUpdateAsync();
+                    Version? remoteRelease = await GithubUpdater.CheckManagerUpdateAsync();
                     if (remoteRelease != null)
                     {
                         ToastManager.Show("Update Available", $"Crescent {remoteRelease.version} is available", ToastType.Info, 4500, "Open Settings to update");

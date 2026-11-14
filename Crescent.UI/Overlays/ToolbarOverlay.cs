@@ -112,7 +112,7 @@ namespace Crescent.UI
                     avatarBorder.Child = new Image
                     {
                         Source = new Bitmap(memoryStream),
-                        Stretch = Stretch.UniformToFill
+                        Stretch = Stretch.UniformToFill,
                     };
                     return;
                 }

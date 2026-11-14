@@ -1,9 +1,11 @@
+using System.Runtime;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Threading;
 using Crescent.Plugins;
 using Crescent.Versioning;
+using Version = Crescent.Versioning.Version;
 
 namespace Crescent.UI
 {
@@ -64,20 +66,20 @@ namespace Crescent.UI
 
             if (activeGrid.Children.Count > 0 && !Children.Contains(activeGrid))
             {
-                Children.Add(activeGrid);
-                Children.Add(separator);
+                Children.Insert(0, activeGrid);
+                Children.Insert(1, separator);
             }
 
             if (!Children.Contains(totalGrid))
                 Children.Add(totalGrid);
         }
 
-        public async Task LoadRemotePluginsAsync()
+        public async Task LoadRemotePluginsAsync(bool forceRefresh = false)
         {
             List<GithubPluginInfo> remotePlugins = new();
             try
             {
-                remotePlugins = await GithubPluginInfo.GetAvailablePluginsAsync();
+                remotePlugins = await GithubPluginInfo.GetAvailablePluginsAsync(forceRefresh);
             }
             catch (Exception exception)
             {
@@ -88,7 +90,6 @@ namespace Crescent.UI
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 totalGrid.Children.Clear();
-
                 for (int index = 0; index < remotePlugins.Count; index++)
                 {
                     GithubPluginInfo remote = remotePlugins[index];
@@ -99,7 +100,8 @@ namespace Crescent.UI
 
                     if (matchedLocal != null)
                     {
-                        bool hasUpdate = VersionInfo.IsNewerVersion(remote.version, matchedLocal.version);
+                        remote.pluginBytes = null;
+                        bool hasUpdate = Version.IsNewerVersion(remote.version, matchedLocal.version);
                         if (hasUpdate && activeCards.TryGetValue(normalizedRemote, out PluginCard? existingCard))
                         {
                             int cardIndex = activeGrid.Children.IndexOf(existingCard);
@@ -115,44 +117,66 @@ namespace Crescent.UI
                     }
                     else
                     {
-                        PluginCard card = new(remote);
-                        card.onActionClick += async _ => await InstallPluginAsync(remote, false);
-                        totalGrid.Children.Add(card);
+                        if (remote.pluginBytes != null)
+                        {
+                            PluginCard card = new(remote);
+                            remote.pluginBytes = null;
+                            card.onActionClick += async _ => await InstallPluginAsync(remote, false);
+                            totalGrid.Children.Add(card);
+                        }
                     }
                 }
             });
+
+            GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect();
         }
 
         public static string NormalizeName(string name) => name.Replace(" ", "").ToLowerInvariant();
 
         public async Task InstallPluginAsync(GithubPluginInfo remotePlugin, bool isUpdate)
         {
-            if (remotePlugin.name == null || remotePlugin.pluginBytes == null) return;
-
+            if (remotePlugin.name == null) return;
             string actionLabel = isUpdate ? "Updating Plugin" : "Installing Plugin";
-            ToastManager.ShowProgress(actionLabel, $"{remotePlugin.name} ({remotePlugin.version})", "Extracting plugin files", 50, true);
-
-            string targetDirectory = Path.Combine(Runtime.PluginPath, remotePlugin.name);
-            bool extracted = await GithubUpdater.InstallBufferAsync(remotePlugin.pluginBytes, remotePlugin.name, targetDirectory);
-
-            if (!extracted)
+            try
             {
-                ToastManager.CompleteProgress("Plugin Failed", $"Could not install {remotePlugin.name}", ToastType.Error, 4000);
-                return;
+                byte[]? packageBytes = remotePlugin.pluginBytes;
+                if (packageBytes == null)
+                {
+                    ToastManager.ShowProgress(actionLabel, $"{remotePlugin.name} ({remotePlugin.version})", "Downloading plugin package", 25, true);
+                    packageBytes = await GithubPluginInfo.DownloadPluginBytesAsync(remotePlugin.downloadUrl);
+                }
+
+                if (packageBytes == null || packageBytes.Length == 0)
+                {
+                    ToastManager.CompleteProgress("Plugin Failed", $"Could not download {remotePlugin.name}", ToastType.Error, 4000);
+                    return;
+                }
+
+                ToastManager.ShowProgress(actionLabel, $"{remotePlugin.name} ({remotePlugin.version})", "Extracting plugin files", 65, true);
+                string targetDirectory = Path.Combine(Runtime.PluginPath, remotePlugin.name);
+                bool extracted = await GithubUpdater.InstallBufferAsync(packageBytes, remotePlugin.name, targetDirectory);
+
+                if (!extracted)
+                {
+                    ToastManager.CompleteProgress("Plugin Failed", $"Could not install {remotePlugin.name}", ToastType.Error, 4000);
+                    return;
+                }
+
+                await PluginStartupProcess.LoadPluginAsync(targetDirectory);
+                await Dispatcher.UIThread.InvokeAsync(() => RenderInstalledPlugins());
+                await LoadRemotePluginsAsync(true);
+
+                string completionTitle = isUpdate ? "Plugin Updated" : "Plugin Installed";
+                string completionVerb = isUpdate ? "Updated" : "Installed";
+                ToastManager.CompleteProgress(completionTitle, $"{completionVerb} {remotePlugin.name} ({remotePlugin.version})", ToastType.Success, 3500, "Library");
             }
-
-            await PluginStartupProcess.LoadPluginAsync(targetDirectory);
-
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            finally
             {
-                RenderInstalledPlugins();
-            });
-
-            await LoadRemotePluginsAsync();
-
-            string completionTitle = isUpdate ? "Plugin Updated" : "Plugin Installed";
-            string completionVerb = isUpdate ? "Updated" : "Installed";
-            ToastManager.CompleteProgress(completionTitle, $"{completionVerb} {remotePlugin.name} ({remotePlugin.version})", ToastType.Success, 3500, "Library");
+                remotePlugin.pluginBytes = null;
+                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                GC.Collect();
+            }
         }
     }
 }

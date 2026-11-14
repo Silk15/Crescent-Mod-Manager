@@ -6,6 +6,7 @@ using Crescent.APIs.Discord;
 using Crescent.APIs.NexusMods;
 using Crescent.Json.Serialization;
 using Crescent.Versioning;
+using Version = Crescent.Versioning.Version;
 
 namespace Crescent.UI
 {
@@ -32,6 +33,7 @@ namespace Crescent.UI
             Children.Add(GetNexusSettings());
             Children.Add(GetModManagerSettings(settings));
             Children.Add(GetConsoleSettings(settings));
+            Children.Add(GetDiscordSettings(settings));
         }
 
         #region Updates & Versioning
@@ -44,8 +46,8 @@ namespace Crescent.UI
             versionRow.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
             versionRow.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
-            VersionInfo? pendingUpdate = GithubUpdater.availableManagerUpdate;
-            bool hasUpdate = pendingUpdate != null && VersionInfo.IsNewerVersion(pendingUpdate.version, Runtime.Version);
+            Version? pendingUpdate = GithubUpdater.availableManagerUpdate;
+            bool hasUpdate = pendingUpdate != null && Version.IsNewerVersion(pendingUpdate.version, Runtime.Version);
 
             StackPanel versionInfoStack = new()
             {
@@ -87,7 +89,7 @@ namespace Crescent.UI
                 actionButton.IsEnabled = false;
                 actionButton.Content = "Checking...";
 
-                VersionInfo? foundUpdate = await GithubUpdater.CheckManagerUpdateAsync();
+                Version? foundUpdate = await GithubUpdater.CheckManagerUpdateAsync();
                 Setup();
 
                 if (foundUpdate != null)
@@ -265,13 +267,13 @@ namespace Crescent.UI
         {
             StackPanel sectionStack = SettingsUtils.GetSectionContainer("Mod Management & Deployment", out Border cardBorder);
 
-            sectionStack.Children.Add(SettingsUtils.GetToggleRow("Auto-deploy New Mods", "Automatically run deployment when a mod or nxm:// download completes", settings.autoDeployOnDownload, async value =>
+            sectionStack.Children.Add(SettingsUtils.GetToggleRow("Auto-deploy New Mods", "Automatically deploy newly downloaded mods", settings.autoDeployOnDownload, async value =>
             {
                 settings.autoDeployOnDownload = value;
                 await settings.SaveAsync();
             }));
 
-            sectionStack.Children.Add(SettingsUtils.GetToggleRow("Auto-check Updates", "Automatically query Nexus Mods and GitHub for new versions", settings.checkUpdatesOnLaunch, async value =>
+            sectionStack.Children.Add(SettingsUtils.GetToggleRow("Auto-check Updates", "Automatically check Nexus Mods and GitHub for new versions", settings.checkUpdatesOnLaunch, async value =>
             {
                 settings.checkUpdatesOnLaunch = value;
                 await settings.SaveAsync();

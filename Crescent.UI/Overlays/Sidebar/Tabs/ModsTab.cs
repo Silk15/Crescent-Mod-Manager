@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -39,7 +40,9 @@ namespace Crescent.UI
         public string selectedSortOption = "A - Z";
         public string selectedFilterOption = "All";
         public bool isSetup;
+        public bool hasSyncedThisSession;
         public CancellationTokenSource? searchCancellationToken;
+        public CancellationTokenSource? syncCancellationToken;
         public Action? renderMods;
         public int Order => 2;
 
@@ -55,7 +58,9 @@ namespace Crescent.UI
             if (this.pluginData != pluginData)
             {
                 renderedModCache.Clear();
+                renderedMods.Clear();
                 isSetup = false;
+                hasSyncedThisSession = false;
             }
 
             this.pluginData = pluginData;
@@ -72,7 +77,9 @@ namespace Crescent.UI
         public void Refresh()
         {
             renderedModCache.Clear();
+            renderedMods.Clear();
             isSetup = false;
+            hasSyncedThisSession = false;
             Children.Clear();
             Setup();
         }
@@ -268,26 +275,39 @@ namespace Crescent.UI
         {
             renderMods = () =>
             {
-                searchCancellationToken?.Cancel();
-                searchCancellationToken = new();
-                CancellationToken token = searchCancellationToken.Token;
-
                 string filterText = searchBox.Text != null ? searchBox.Text.ToLower() : string.Empty;
                 selectedFilterOption = filterComboBox.SelectedItem as string ?? "All";
                 selectedSortOption = sortComboBox.SelectedItem as string ?? "A - Z";
 
                 RenderMods(targetListPanel, filterText);
 
-                _ = Task.Run(async () =>
+                if (!hasSyncedThisSession)
                 {
-                    bool listChanged = SyncMods(token);
-                    if (token.IsCancellationRequested) return;
+                    hasSyncedThisSession = true;
+                    syncCancellationToken?.Cancel();
+                    syncCancellationToken = new();
+                    CancellationToken token = syncCancellationToken.Token;
 
-                    if (listChanged)
-                        await Dispatcher.UIThread.InvokeAsync(() => RenderMods(targetListPanel, filterText));
+                    _ = Task.Run(async () =>
+                    {
+                        bool listChanged = SyncMods(token);
+                        if (token.IsCancellationRequested) return;
 
-                    await CheckUpdatesAsync(token);
-                }, token);
+                        if (listChanged)
+                        {
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                string currentFilter = searchBox.Text != null ? searchBox.Text.ToLower() : string.Empty;
+                                RenderMods(targetListPanel, currentFilter);
+                            });
+                        }
+
+                        await CheckUpdatesAsync(token);
+
+                        GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
+                        GC.Collect();
+                    }, token);
+                }
             };
 
             filterComboBox.SelectionChanged += (_, _) =>
@@ -427,21 +447,32 @@ namespace Crescent.UI
                 else
                 {
                     string previousModName = modData.modName;
+                    bool pathChanged = !string.Equals(modData.filePath, filePath, StringComparison.OrdinalIgnoreCase);
                     modData.filePath = filePath;
+
                     if (!ModPathUtils.HasArchiveExtension(modData.modName))
                     {
                         modData.modName = safeModName;
                         if (!string.Equals(previousModName, safeModName, StringComparison.OrdinalIgnoreCase))
+                        {
                             pluginData.ReplaceModId(previousModName, safeModName, modData);
+                            listChanged = true;
+                        }
                     }
 
-                    pluginData.OnModLoaded(modData);
+                    if (pathChanged)
+                    {
+                        pluginData.OnModLoaded(modData);
+                        listChanged = true;
+                    }
                 }
 
                 ModInteractionUtils.SyncModDeploymentState(pluginData, modData);
             }
 
-            _ = pluginData.SaveAsync();
+            if (listChanged)
+                _ = pluginData.SaveAsync();
+
             return listChanged;
         }
 

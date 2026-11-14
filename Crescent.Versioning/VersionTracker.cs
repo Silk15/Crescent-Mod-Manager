@@ -29,16 +29,16 @@ namespace Crescent.Versioning
             {
                 loaded = new()
                 {
-                    lastLaunchedVersion = VersionInfo.Clean(Runtime.Version)
+                    lastLaunchedVersion = Version.Clean(Runtime.Version)
                 };
                 _ = loaded.SaveAsync();
                 return loaded;
             }
 
-            string currentClean = VersionInfo.Clean(Runtime.Version);
-            string recordedClean = VersionInfo.Clean(loaded.lastLaunchedVersion);
+            string currentClean = Version.Clean(Runtime.Version);
+            string recordedClean = Version.Clean(loaded.lastLaunchedVersion);
 
-            if (!string.IsNullOrEmpty(recordedClean) && VersionInfo.IsNewerVersion(currentClean, recordedClean))
+            if (!string.IsNullOrEmpty(recordedClean) && Version.IsNewerVersion(currentClean, recordedClean))
             {
                 loaded.previousVersion = loaded.lastLaunchedVersion;
                 loaded.lastLaunchedVersion = currentClean;
@@ -49,10 +49,10 @@ namespace Crescent.Versioning
             return loaded;
         }
 
-        public async Task StagePendingUpdateAsync(VersionInfo targetRelease)
+        public async Task StagePendingUpdateAsync(Version targetRelease)
         {
-            previousVersion = VersionInfo.Clean(Runtime.Version);
-            lastLaunchedVersion = VersionInfo.Clean(targetRelease.version);
+            previousVersion = Version.Clean(Runtime.Version);
+            lastLaunchedVersion = Version.Clean(targetRelease.version);
             lastReleaseNotes = targetRelease.releaseNotes;
             showPostUpdatePopup = true;
             await SaveAsync();
@@ -61,7 +61,7 @@ namespace Crescent.Versioning
         public async Task AcknowledgePopupAsync()
         {
             showPostUpdatePopup = false;
-            lastLaunchedVersion = VersionInfo.Clean(Runtime.Version);
+            lastLaunchedVersion = Version.Clean(Runtime.Version);
             await SaveAsync();
         }
 
