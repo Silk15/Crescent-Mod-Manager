@@ -13,16 +13,17 @@ A lightweight mod manager capable of working with (almost) any game on Nexus Mod
   
 - Download the latest release [here](https://github.com/Silk15/Crescent-Mod-Manager/releases/tag/MainFiles) and extract it somewhere on your PC.
 - Launch Crescent
-- Press the `+` on the game(s) you'd like to install and restart Crescent
+- Press the `+` on the game(s) you'd like to install
  
-And that's it. When you start Crescent you'll be able to set staging and executable paths like any other mod manager, as well as import profiles.
+And that's it. When you start Crescent you'll be able to set staging and executable paths like any other mod manager, as well as import profiles. Whenever I update a plugin or the app, you will get a popup and be able to automatically restart with the latest changes applied.
 
-<img width="1919" height="1079" alt="Screenshot 2026-11-13 195709" src="https://github.com/user-attachments/assets/3c0f03c7-49c9-4d06-9109-2b3fd8dc2cb2" />
-<img width="1919" height="1079" alt="Screenshot 2026-11-13 195659" src="https://github.com/user-attachments/assets/cb3699db-8748-4c79-b98a-e55aa64dc348" />
+<img width="1919" height="1079" alt="Screenshot 2026-11-24 212321" src="https://github.com/user-attachments/assets/69be7747-d71d-4497-af2b-9d0ffe543573" />
+<img width="1919" height="1079" alt="Screenshot 2026-11-24 212337" src="https://github.com/user-attachments/assets/a4223b8d-d270-41ed-a766-8b968b17c3f2" />
 
-> *Parts of this project were written with AI and/or AI Assistance, such as:*
-> - *The **base** of the UI*
-> - *Nexus API requests*
-> - *A good chunk of the file deployment.*
+> AI Disclosure & Information!
+> Parts of Crescent Mod Manager were developed with the assistance of AI tools such as:
+>  - *UI code, including the original base*
+>  - *File deployment logic*
+>  - *Nexus API requests*
 
-> *However that code has been majorly refactored to actually work with my project and be extensible. Both in the way I want and literally. I refuse to ever entirely vibe code something or paste code in, especially not without extensively checking it.*
+> However, every line of AI-generated code is thoroughly reviewed, refactored, and tested to ensure it fits my standards. This is a human-led project where AI acts strictly as an assistant.
