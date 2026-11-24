@@ -1,4 +1,5 @@
-using Crescent.Json.Serialization;
+using System.Numerics;
+using Silk.Utilities;
 
 namespace Crescent.UI
 {
@@ -16,6 +17,11 @@ namespace Crescent.UI
         public bool skipUpdatePopup;
         public bool autoRegisterNxm = true;
         public bool autoScrollConsole = true;
+        public bool minimiseToTray;
+        public bool saveWindowSize;
+        public bool maximised;
+
+        public Vector2 windowSize = new(1500, 900);
 
         public static Settings Instance
         {

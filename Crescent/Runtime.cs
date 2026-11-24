@@ -1,14 +1,16 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
-using Crescent.Utilities;
 using JetBrains.Annotations;
+using Silk.Utilities;
 
 namespace Crescent
 {
     public static class Runtime
     {
-        public const string Version = "v1.3.4";
+        public const string Version = "v1.4.2";
+        public const bool DeveloperBuild = true;
+        
         public static readonly string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create), "Crescent");
 
         public static readonly string PluginPath = Environment.ProcessPath.Replace("Managed\\Crescent.exe", "Plugins");

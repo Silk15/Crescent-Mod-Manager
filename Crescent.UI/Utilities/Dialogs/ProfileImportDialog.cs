@@ -9,9 +9,11 @@ using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 using Avalonia.Controls.Primitives;
 using Avalonia.Platform;
-using Crescent.Utilities;
+using Crescent.UI.Controls;
+using Crescent.UI.Windows;
+using Silk.Utilities;
 
-namespace Crescent.UI
+namespace Crescent.UI.Dialogs
 {
     public class ProfileImportDialog : Dialog
     {
@@ -49,7 +51,7 @@ namespace Crescent.UI
 
             progressBar = new()
             {
-                Foreground = Brushes.CornflowerBlue,
+                Foreground = Colors.Accent,
                 Height = 30,
                 IsIndeterminate = true,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -81,7 +83,7 @@ namespace Crescent.UI
             Border border = new()
             {
                 Background = Colors.MainPanelEnd,
-                CornerRadius = new CornerRadius(6),
+                CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(10)
             };
 
@@ -137,7 +139,6 @@ namespace Crescent.UI
                     }
 
                     await pluginData.SaveAsync();
-
                     if (missingMods.Count == 0)
                     {
                         await Dispatcher.UIThread.InvokeAsync(() =>

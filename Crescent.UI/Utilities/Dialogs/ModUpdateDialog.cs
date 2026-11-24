@@ -6,10 +6,12 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Crescent.APIs.NexusMods;
-using Crescent.Utilities;
+using Silk.Utilities;
 using Crescent.Plugins;
+using Crescent.UI.Controls;
+using Crescent.UI.Windows;
 
-namespace Crescent.UI
+namespace Crescent.UI.Dialogs
 {
     public class ModUpdateDialog : Dialog
     {
@@ -76,7 +78,7 @@ namespace Crescent.UI
             Border border = new()
             {
                 Background = Colors.MainPanelEnd,
-                CornerRadius = new CornerRadius(6),
+                CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(15),
                 Margin = new Thickness(0, 0, 10, 0)
             };
@@ -117,7 +119,7 @@ namespace Crescent.UI
             Border border = new()
             {
                 Background = Colors.MainPanelEnd,
-                CornerRadius = new CornerRadius(6),
+                CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(15),
                 Margin = new Thickness(10, 0, 0, 0)
             };
@@ -132,7 +134,7 @@ namespace Crescent.UI
                 Text = "New Version (Latest)",
                 FontWeight = FontWeight.Bold,
                 FontSize = 16,
-                Foreground = Colors.Green
+                Foreground = Colors.Accent
             });
 
             panel.Children.Add(new TextBlock
@@ -198,7 +200,7 @@ namespace Crescent.UI
 
         public CrescentButton GetUpdateButton()
         {
-            CrescentButton button = new(Colors.Green)
+            CrescentButton button = new(Colors.Accent)
             {
                 Content = "Update Now",
                 Width = 110

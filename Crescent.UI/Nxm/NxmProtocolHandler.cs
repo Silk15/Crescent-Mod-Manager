@@ -4,10 +4,13 @@ using System.Text.RegularExpressions;
 using Avalonia.Threading;
 using Crescent.APIs.NexusMods;
 using Crescent.Plugins;
+using Crescent.UI.Controls.Toasts;
+using Crescent.UI.Dialogs;
 using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
+using Silk.Utilities;
 
-namespace Crescent.UI
+namespace Crescent.UI.Nxm
 {
     public static class NxmProtocolHandler
     {
@@ -42,7 +45,7 @@ namespace Crescent.UI
             if (pipeServerCancellation != null) return;
             pipeServerCancellation = new();
             CancellationToken token = pipeServerCancellation.Token;
-            _ = Task.Run(async () =>
+            Task.Run(async () =>
             {
                 while (!token.IsCancellationRequested)
                 {
@@ -53,7 +56,7 @@ namespace Crescent.UI
 
                         using StreamReader reader = new(server, Encoding.UTF8);
                         string message = await reader.ReadToEndAsync(token);
-                        if (!string.IsNullOrWhiteSpace(message)) _ = DownloadUrlOrNxmAsync(message.Trim());
+                        if (!string.IsNullOrWhiteSpace(message)) DownloadUrlOrNxmAsync(message.Trim()).FireAndForget();
                     }
                     catch (OperationCanceledException)
                     {
@@ -65,7 +68,7 @@ namespace Crescent.UI
                         await Task.Delay(500, token);
                     }
                 }
-            }, token);
+            }, token).FireAndForget();
         }
 
         public static bool RegisterProtocol(bool showToast = true)

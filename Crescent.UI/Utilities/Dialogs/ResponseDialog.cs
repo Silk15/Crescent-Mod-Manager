@@ -3,8 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Crescent.UI.Windows;
 
-namespace Crescent.UI
+namespace Crescent.UI.Dialogs
 {
     public abstract class ResponseDialog : Dialog
     {

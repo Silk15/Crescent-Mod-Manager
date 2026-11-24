@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crescent", "Crescent\Crescent.csproj", "{D758A5CC-5B2E-4206-9581-F7BC70037F65}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crescent.Json.Serialization", "Crescent.Json.Serialization\Crescent.Json.Serialization.csproj", "{CFC45385-CF3F-4B91-B4D4-31A9BE819EDA}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crescent.Utilities", "Crescent.Utilities\Crescent.Utilities.csproj", "{7C414661-D2BF-49B4-9E7D-CA607CAB7BD7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Crescent.Plugins", "Crescent.Plugins\Crescent.Plugins.csproj", "{83F2F1C8-4B62-477C-97B9-7DE543D560C3}"
@@ -38,10 +36,6 @@ Global
 		{FB316276-5DA8-4AA4-9BCE-9E369D9A1526}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB316276-5DA8-4AA4-9BCE-9E369D9A1526}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB316276-5DA8-4AA4-9BCE-9E369D9A1526}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CFC45385-CF3F-4B91-B4D4-31A9BE819EDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CFC45385-CF3F-4B91-B4D4-31A9BE819EDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CFC45385-CF3F-4B91-B4D4-31A9BE819EDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CFC45385-CF3F-4B91-B4D4-31A9BE819EDA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7C414661-D2BF-49B4-9E7D-CA607CAB7BD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7C414661-D2BF-49B4-9E7D-CA607CAB7BD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7C414661-D2BF-49B4-9E7D-CA607CAB7BD7}.Release|Any CPU.ActiveCfg = Release|Any CPU

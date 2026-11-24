@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using Silk.Utilities;
 
 namespace Crescent.IO
 {
@@ -6,7 +7,7 @@ namespace Crescent.IO
     {
         public HashSet<string> backedUpFiles = new(StringComparer.OrdinalIgnoreCase);
 
-        public string BackupFolderName => ".backup";
+        public string BackupFolderName => ".backups";
 
         public string ManifestFileName => "backups.json";
 

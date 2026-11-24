@@ -14,6 +14,15 @@
       <Reference Include="Newtonsoft.Json">
         <HintPath>..\..\..\..\Pictures\Crescent Mod Manager\Managed\Newtonsoft.Json.dll</HintPath>
       </Reference>
+      <Reference Include="Utilities">
+        <HintPath>..\..\..\..\..\..\Programs\Applications\Crescent Mod Manager\Managed\Utilities.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="14.0.1-beta2" />
+      <PackageReference Include="SharpCompress" Version="0.51.0-beta.174" />
+      <PackageReference Include="Silk.Utilities" Version="1.0.0" />
     </ItemGroup>
 
 </Project>

@@ -2,9 +2,15 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Crescent.Plugins;
+using Crescent.UI.Controls.Tabs;
+using Crescent.UI.Controls.Tabs.Elements;
+using Crescent.UI.Controls.Toasts;
+using Crescent.UI.Dialogs;
+using Crescent.UI.Dialogs.Responses;
 using Crescent.Utilities;
+using Silk.Utilities;
 
-namespace Crescent.UI
+namespace Crescent.UI.ContextMenus
 {
     public static class ModContextMenu
     {
@@ -52,7 +58,7 @@ namespace Crescent.UI
             MenuItem nexusMenuItem = new()
             {
                 Header = "Open Nexus",
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Margin = new(10, 5, 10, 0)
             };
             nexusMenuItem.Click += (_, _) => modData.url.nexusUrl.TryOpen();
@@ -64,7 +70,7 @@ namespace Crescent.UI
             MenuItem openFolderMenuItem = new()
             {
                 Header = "Open Folder",
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Margin = new(10, 0, 10, 0)
             };
 
@@ -77,7 +83,7 @@ namespace Crescent.UI
             MenuItem profileMenu = new()
             {
                 Header = "Profiles",
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Margin = new(10, 0, 10, 0)
             };
 
@@ -90,7 +96,7 @@ namespace Crescent.UI
                 {
                     Header = $"{profile.name} {(isEnabledInProfile ? " (Enabled)" : " (Disabled)")}",
                     Foreground = isEnabledInProfile ? Brushes.LightGreen : Brushes.IndianRed,
-                    CornerRadius = new CornerRadius(8)
+                    CornerRadius = new CornerRadius(4)
                 };
 
                 profileItem.Click += async (_, _) =>
@@ -118,7 +124,7 @@ namespace Crescent.UI
             MenuItem updateButton = new()
             {
                 Header = $"Update{versionSuffix}",
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Margin = new(10, 0, 10, 0)
             };
 
@@ -135,7 +141,7 @@ namespace Crescent.UI
                         if (!updateDialog.UpdateConfirmed) return;
                     }
 
-                    await ModInteractionUtils.UpdateAsync(pluginData, modData);
+                    await ModsIO.UpdateModAsync(pluginData, modData);
                     modsTab.Refresh();
                 }
                 catch (Exception exception)
@@ -152,7 +158,7 @@ namespace Crescent.UI
             MenuItem checkButton = new()
             {
                 Header = "Check",
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Margin = new(10, 0, 10, 0)
             };
 
@@ -171,7 +177,7 @@ namespace Crescent.UI
             MenuItem renameButton = new()
             {
                 Header = "Rename",
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Margin = new(10, 0, 10, 0)
             };
 
@@ -202,14 +208,14 @@ namespace Crescent.UI
             MenuItem deleteButton = new()
             {
                 Header = "Delete",
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Margin = new(10, 0, 10, 5)
             };
 
             deleteButton.Click += async (_, _) =>
             {
                 string deletedDisplayName = modData.DisplayName.Cleaned();
-                ModInteractionUtils.WithdrawModFiles(pluginData, modData);
+                ModsIO.WithdrawModFiles(pluginData, modData);
                 modData.DeleteFiles(pluginData.StagingPath);
                 pluginData.RemoveMod(modData);
 

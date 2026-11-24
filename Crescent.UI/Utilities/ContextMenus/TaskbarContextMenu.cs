@@ -1,7 +1,7 @@
 using Avalonia.Controls;
-using Crescent.Plugins;
+using Crescent.UI.Windows;
 
-namespace Crescent.UI
+namespace Crescent.UI.ContextMenus
 {
     public static class TaskbarContextMenu
     {

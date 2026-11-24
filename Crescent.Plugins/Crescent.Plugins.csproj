@@ -10,12 +10,13 @@
     <ItemGroup>
       <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
       <PackageReference Include="Newtonsoft.Json" Version="14.0.1-beta2" />
+      <PackageReference Include="SharpCompress" Version="0.51.0-beta.174" />
+      <PackageReference Include="Silk.Utilities" Version="1.0.0" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\Crescent.APIs.NexusMods\Crescent.APIs.NexusMods.csproj" />
       <ProjectReference Include="..\Crescent.IO\Crescent.IO.csproj" />
-      <ProjectReference Include="..\Crescent.Json.Serialization\Crescent.Json.Serialization.csproj" />
       <ProjectReference Include="..\Crescent\Crescent.csproj" />
     </ItemGroup>
 
@@ -24,5 +25,4 @@
         <HintPath>..\..\..\..\Pictures\Crescent Mod Manager\Managed\SharpCompress.dll</HintPath>
       </Reference>
     </ItemGroup>
-
 </Project>

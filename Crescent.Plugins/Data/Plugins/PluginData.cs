@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using Crescent.Json.Serialization;
+using Silk.Utilities;
 using Newtonsoft.Json;
 
 namespace Crescent.Plugins
@@ -8,9 +8,8 @@ namespace Crescent.Plugins
     public abstract class PluginData
     {
         public const string Default = "Default";
-        public const string Managed = "Managed";
-        public const string Archive = "Archive";
-        public const string Manual = "Manual";
+        public const string Archive = ".archive";
+        public const string Manual = ".manual";
 
         public static List<PluginData> InstalledPlugins { get; set; } = new();
 
@@ -24,12 +23,16 @@ namespace Crescent.Plugins
         [JsonProperty(Order = 4)] public string deploymentStatus = "Not deployed";
         [JsonProperty(Order = 9)] public long playTime;
         [JsonProperty(Order = 4)] public bool isEnabled;
+        
+        public Theme? theme;
 
         [NonSerialized]
         public string version;
 
         [NonSerialized]
         public string folderName;
+
+        public ModGridType modGridType;
 
         public event Action<PluginData> onDeploymentStatusChanged;
 
@@ -41,10 +44,10 @@ namespace Crescent.Plugins
         [JsonIgnore] public string DeploymentStatus => deploymentStatus == "Not deployed" && installedMods.Any(modData => modData.isDeployed) ? "Deployed mods restored from configuration" : deploymentStatus;
 
         [JsonIgnore] public abstract string Name { get; }
-
         [JsonIgnore] public virtual int ModCount => SelectedProfile?.mods.Count ?? 0;
-
+        
         [JsonIgnore] public virtual Deployer Deployer { get; set; }
+        [JsonIgnore] public abstract API API { get; }
 
         [JsonIgnore] public ProfileData SelectedProfile
         {
@@ -78,9 +81,6 @@ namespace Crescent.Plugins
                 return profiles;
             }
         }
-
-        [JsonIgnore] public abstract Theme Theme { get; }
-        [JsonIgnore] public abstract API API { get; }
 
         protected PluginData()
         {

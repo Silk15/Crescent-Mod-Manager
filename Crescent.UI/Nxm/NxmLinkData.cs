@@ -1,4 +1,4 @@
-namespace Crescent.UI
+namespace Crescent.UI.Nxm
 {
     public class NxmLinkData
     {

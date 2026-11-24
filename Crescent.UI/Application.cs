@@ -1,12 +1,19 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using Crescent.APIs.Discord;
 using Crescent.Plugins;
-using Crescent.Utilities;
+using Crescent.UI.ContextMenus;
+using Crescent.UI.Controls.Sidebar;
+using Crescent.UI.Controls.Toasts;
+using Crescent.UI.Dialogs;
+using Crescent.UI.Dialogs.Responses;
+using Crescent.UI.Windows;
+using Silk.Utilities;
 using Crescent.Versioning;
 using Version = Crescent.Versioning.Version;
 
@@ -14,12 +21,35 @@ namespace Crescent.UI
 {
     public class Application : Avalonia.Application
     {
-        public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<Application>().UsePlatformDetect().LogToTrace();
+        public static MainWindow? MainWindow { get; set; }
+        
+        public static AppBuilder BuildAvaloniaApp()
+        {
+            try
+            {
+                AppBuilder appBuilder = AppBuilder.Configure<Application>().UsePlatformDetect().LogToTrace();
+                appBuilder.ConfigureFonts(manager => manager.AddFontCollection(new Font()));
+                appBuilder.With(new FontManagerOptions
+                {
+                    DefaultFamilyName = "fonts:Crescent#Nunito"
+                });
+
+                return appBuilder;
+            }
+            catch (Exception ex)
+            {
+                ExitApplication();
+                throw ex;
+            }
+        }
 
         [InitialiseOnLoad]
         public static void Initialise() => Runtime.onCrescentLoaded += args => BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
 
-        public override void Initialize() => Styles.Add(new FluentTheme());
+        public override void Initialize()
+        {
+            Styles.Add(new FluentTheme());
+        }
 
         public override async void OnFrameworkInitializationCompleted()
         {
@@ -41,8 +71,8 @@ namespace Crescent.UI
 
         public void OpenMainWindow(IClassicDesktopStyleApplicationLifetime desktop)
         {
-            MainWindow mainWindow = new();
-            desktop.MainWindow = mainWindow;
+            MainWindow = new();
+            desktop.MainWindow = MainWindow;
 
             DiscordManager.SetEnabled(Settings.Instance.enableDiscordPresence);
             ProgressDialog? activeProgressWindow = null;
@@ -115,7 +145,7 @@ namespace Crescent.UI
                     try
                     {
                         if (activeProgressWindow != null) activeProgressWindow.UpdateProgress(processedFiles, totalFiles, modName, targetFile);
-                        if (mainWindow.sidebarOverlay != null) mainWindow.sidebarOverlay.UpdateProgress(processedFiles, totalFiles);
+                        if (MainWindow.sidebarOverlay != null) MainWindow.sidebarOverlay.UpdateProgress(processedFiles, totalFiles);
                     }
                     catch (Exception exception)
                     {
@@ -133,7 +163,7 @@ namespace Crescent.UI
                         activeProgressWindow?.Close();
                         activeProgressWindow = null;
 
-                        if (mainWindow.sidebarOverlay != null && SidebarOverlay.deploymentProgressBar != null)
+                        if (MainWindow.sidebarOverlay != null && SidebarOverlay.deploymentProgressBar != null)
                             SidebarOverlay.deploymentProgressBar.IsVisible = false;
                     }
                     catch (Exception exception)
@@ -143,18 +173,29 @@ namespace Crescent.UI
                 });
             };
 
-            mainWindow.Closing += (sender, args) =>
+            MainWindow.Closing += async (sender, args) =>
             {
-                args.Cancel = true;
-                mainWindow.Hide();
+                if (Settings.Instance.saveWindowSize)
+                {
+                    Settings.Instance.windowSize = new((float)MainWindow.Width, (float)MainWindow.Height);
+                    Settings.Instance.maximised = MainWindow.WindowState == WindowState.Maximized;
+                    await Settings.Instance.SaveAsync();
+                }
+                
+                if (Settings.Instance.minimiseToTray)
+                {
+                    args.Cancel = true;
+                    MainWindow.Hide();
+                }
+                else ExitApplication();
             };
 
             TrayIcon.SetIcons(this, new TrayIcons
             {
-                TaskbarContextMenu.Get(mainWindow)
+                TaskbarContextMenu.Get(MainWindow)
             });
 
-            mainWindow.Show();
+            MainWindow.Show();
 
             Dispatcher.UIThread.Post(async () =>
             {
@@ -170,7 +211,7 @@ namespace Crescent.UI
 
                     ToastManager.Show("Crescent Updated", $"Now running Crescent {Runtime.Version}", ToastType.Success, 4000);
                     UpdateDialog postUpdateDialog = new(updated, true);
-                    await postUpdateDialog.ShowDialog(mainWindow);
+                    await postUpdateDialog.ShowDialog(MainWindow);
                 }
 
                 if (Settings.Instance.checkUpdatesOnLaunch)
@@ -182,7 +223,7 @@ namespace Crescent.UI
                         if (!Settings.Instance.skipUpdatePopup)
                         {
                             UpdateDialog availableDialog = new(remoteRelease, false);
-                            await availableDialog.ShowDialog(mainWindow);
+                            await availableDialog.ShowDialog(MainWindow);
                         }
                     }
                 }

@@ -1,6 +1,6 @@
 using Crescent.APIs;
-using Crescent.Json.Serialization;
-using Crescent.Utilities;
+using Silk.Utilities;
+using Silk.Utilities;
 using Newtonsoft.Json.Linq;
 
 namespace Crescent.APIs.NexusMods

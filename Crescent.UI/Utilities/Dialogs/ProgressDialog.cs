@@ -3,8 +3,10 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Crescent.UI.Controls.Toasts;
+using Crescent.UI.Windows;
 
-namespace Crescent.UI
+namespace Crescent.UI.Dialogs
 {
     public class ProgressDialog : Dialog
     {
@@ -60,7 +62,7 @@ namespace Crescent.UI
                 Maximum = 100,
                 Value = 0,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
-                Foreground = Brushes.CornflowerBlue
+                Foreground = Colors.Accent
             };
 
             statusTextBlock = new()

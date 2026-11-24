@@ -1,28 +1,29 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Crescent.UI.Controls;
 
-namespace Crescent.UI
+namespace Crescent.UI.Dialogs.Responses
 {
     public class ConfirmationDialog : ResponseDialog
     {
-        public TextBox? TextBox { get; }
+        public CrescentTextBox? CrescentTextBox { get; }
 
-        public ConfirmationDialog(string windowTitle, string promptText, bool showTextBox = true, string defaultValue = "") : base(windowTitle)
+        public ConfirmationDialog(string windowTitle, string promptText, bool showCrescentTextBox = true, string defaultValue = "") : base(windowTitle)
         {
             StackPanel panel = GetBasePanel(promptText);
             StackPanel buttonPanel = GetButtonPanel();
             
-            if (showTextBox)
+            if (showCrescentTextBox)
             {
-                TextBox = new TextBox
+                CrescentTextBox = new CrescentTextBox
                 {
                     Text = defaultValue,
                     VerticalAlignment = VerticalAlignment.Center
                 };
-                panel.Children.Add(TextBox);
+                panel.Children.Add(CrescentTextBox);
             }
 
-            CrescentButton okButton = new(Colors.Green)
+            CrescentButton okButton = new(Colors.Accent)
             {
                 Content = "Ok",
                 Width = 80
@@ -30,7 +31,7 @@ namespace Crescent.UI
             
             okButton.onClick += () =>
             {
-                InputText = TextBox != null ? TextBox.Text ?? string.Empty : defaultValue;
+                InputText = CrescentTextBox != null ? CrescentTextBox.Text ?? string.Empty : defaultValue;
                 Close();
             };
 

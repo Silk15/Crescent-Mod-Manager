@@ -1,13 +1,15 @@
 using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Crescent.Plugins;
+using Crescent.UI.Controls;
 using Crescent.Utilities;
+using Silk.Utilities;
 
-namespace Crescent.UI
+namespace Crescent.UI.Utilities
 {
     public static class SettingsUtils
     {
@@ -56,7 +58,7 @@ namespace Crescent.UI
                 Background = Colors.Overlay,
                 BorderBrush = Colors.Separator,
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
+                CornerRadius = new CornerRadius(4),
                 Padding = new Thickness(20)
             };
 
@@ -110,6 +112,283 @@ namespace Crescent.UI
             return rowGrid;
         }
 
+        public static Grid GetSliderRow(string title, string description, float min, float max, float initialValue, Func<float, Task> onValueChanged)
+        {
+            Grid rowGrid = new();
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+
+            StackPanel textStack = new()
+            {
+                Spacing = 2,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = title,
+                FontSize = 13,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = Brushes.White
+            });
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = description,
+                FontSize = 12,
+                Foreground = Brushes.Gray,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            StackPanel sliderStack = new()
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            TextBlock valueBlock = new()
+            {
+                Text = initialValue.ToString("0.##"),
+                FontSize = 12,
+                Foreground = Brushes.Gray,
+                VerticalAlignment = VerticalAlignment.Center,
+                MinWidth = 36,
+                TextAlignment = TextAlignment.Right
+            };
+
+            Slider slider = new()
+            {
+                Minimum = min,
+                Maximum = max,
+                Value = initialValue,
+                Width = 160,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            slider.PropertyChanged += async (_, changeArgs) =>
+            {
+                if (changeArgs.Property == Slider.ValueProperty)
+                {
+                    float currentValue = (float)slider.Value;
+                    valueBlock.Text = currentValue.ToString("0.##");
+                    await onValueChanged(currentValue);
+                }
+            };
+
+            sliderStack.Children.Add(valueBlock);
+            sliderStack.Children.Add(slider);
+
+            Grid.SetColumn(textStack, 0);
+            Grid.SetColumn(sliderStack, 1);
+
+            rowGrid.Children.Add(textStack);
+            rowGrid.Children.Add(sliderStack);
+            return rowGrid;
+        }
+
+        public static Grid GetIntSliderRow(string title, string description, int min, int max, int initialValue, Func<int, Task> onValueChanged)
+        {
+            Grid rowGrid = new();
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+
+            StackPanel textStack = new()
+            {
+                Spacing = 2,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = title,
+                FontSize = 13,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = Brushes.White
+            });
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = description,
+                FontSize = 12,
+                Foreground = Brushes.Gray,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            StackPanel sliderStack = new()
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            TextBlock valueBlock = new()
+            {
+                Text = initialValue.ToString(),
+                FontSize = 12,
+                Foreground = Brushes.Gray,
+                VerticalAlignment = VerticalAlignment.Center,
+                MinWidth = 36,
+                TextAlignment = TextAlignment.Right
+            };
+
+            Slider slider = new()
+            {
+                Minimum = min,
+                Maximum = max,
+                Value = initialValue,
+                TickFrequency = 1,
+                IsSnapToTickEnabled = true,
+                Width = 160,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            slider.PropertyChanged += async (_, changeArgs) =>
+            {
+                if (changeArgs.Property == Slider.ValueProperty)
+                {
+                    int currentValue = (int)Math.Round(slider.Value);
+                    valueBlock.Text = currentValue.ToString();
+                    await onValueChanged(currentValue);
+                }
+            };
+
+            sliderStack.Children.Add(valueBlock);
+            sliderStack.Children.Add(slider);
+
+            Grid.SetColumn(textStack, 0);
+            Grid.SetColumn(sliderStack, 1);
+
+            rowGrid.Children.Add(textStack);
+            rowGrid.Children.Add(sliderStack);
+            return rowGrid;
+        }
+
+        public static Grid GetEnumRow<T>(string title, string description, T selectedValue, Func<T, Task> onValueChanged) where T : struct, Enum
+        {
+            List<T> enumValues = Enum.GetValues<T>().ToList();
+            return GetSelectionRow(title, description, enumValues, selectedValue, onValueChanged);
+        }
+
+        public static Grid GetCopyTextRow(Control owner, string title, string description, string valueText)
+        {
+            Grid rowGrid = new();
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+
+            StackPanel textStack = new()
+            {
+                Spacing = 2,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = title,
+                FontSize = 13,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = Brushes.White
+            });
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = description,
+                FontSize = 12,
+                Foreground = Brushes.Gray,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            StackPanel rightStack = new()
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 10,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            CrescentTextBox valueBox = new()
+            {
+                Text = valueText,
+                IsReadOnly = true,
+                Width = 180,
+                Height = 36,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            CrescentButton copyButton = new(ButtonStyle.Translucent)
+            {
+                Content = "Copy",
+                VerticalAlignment = VerticalAlignment.Center,
+                Width = 90,
+                Height = 36
+            };
+
+            copyButton.onClick += async () =>
+            {
+                TopLevel? topLevel = TopLevel.GetTopLevel(owner);
+                if (topLevel?.Clipboard != null) await topLevel.Clipboard.SetTextAsync(valueText);
+            };
+
+            rightStack.Children.Add(valueBox);
+            rightStack.Children.Add(copyButton);
+
+            Grid.SetColumn(textStack, 0);
+            Grid.SetColumn(rightStack, 1);
+
+            rowGrid.Children.Add(textStack);
+            rowGrid.Children.Add(rightStack);
+            return rowGrid;
+        }
+        
+        public static Grid GetSelectionRow<T>(string title, string description, List<T> items, T selectedItem, Func<T, Task> onSelectionChanged)
+        {
+            Grid rowGrid = new();
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
+            rowGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+
+            StackPanel textStack = new()
+            {
+                Spacing = 2,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = title,
+                FontSize = 13,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = Brushes.White
+            });
+
+            textStack.Children.Add(new TextBlock
+            {
+                Text = description,
+                FontSize = 12,
+                Foreground = Brushes.Gray,
+                TextWrapping = TextWrapping.Wrap
+            });
+
+            CrescentComboBox comboBox = new()
+            {
+                ItemsSource = items,
+                SelectedItem = selectedItem,
+                VerticalAlignment = VerticalAlignment.Center,
+                MinWidth = 140
+            };
+
+            comboBox.SelectionChanged += async (_, _) =>
+            {
+                if (comboBox.SelectedItem is T selected)
+                    await onSelectionChanged(selected);
+            };
+
+            Grid.SetColumn(textStack, 0);
+            Grid.SetColumn(comboBox, 1);
+
+            rowGrid.Children.Add(textStack);
+            rowGrid.Children.Add(comboBox);
+            return rowGrid;
+        }
+
         public static StackPanel GetPathRow(Control owner, object targetObject, string labelText, string currentPath, string propertyName, Func<string, Task> onPathChanged, bool isFile)
         {
             StackPanel panel = new()
@@ -132,13 +411,13 @@ namespace Crescent.UI
             grid.ColumnDefinitions.Add(new ColumnDefinition(1, GridUnitType.Star));
             grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
 
-            TextBox textBox = GetTextBox(currentPath, onPathChanged);
-            Grid.SetColumn(textBox, 0);
+            CrescentTextBox CrescentTextBox = GetCrescentTextBox(currentPath, onPathChanged);
+            Grid.SetColumn(CrescentTextBox, 0);
 
-            CrescentButton browseButton = GetBrowseButton(owner, isFile, textBox, onPathChanged);
+            CrescentButton browseButton = GetBrowseButton(owner, isFile, CrescentTextBox, onPathChanged);
             Grid.SetColumn(browseButton, 1);
 
-            grid.Children.Add(textBox);
+            grid.Children.Add(CrescentTextBox);
             grid.Children.Add(browseButton);
             panel.Children.Add(grid);
 
@@ -147,20 +426,20 @@ namespace Crescent.UI
             return panel;
         }
 
-        public static TextBox GetTextBox(string currentPath, Func<string, Task> onPathChanged)
+        public static CrescentTextBox GetCrescentTextBox(string currentPath, Func<string, Task> onPathChanged)
         {
-            TextBox textBox = new()
+            CrescentTextBox CrescentTextBox = new()
             {
                 Text = currentPath,
                 Height = 36,
                 VerticalAlignment = VerticalAlignment.Center
             };
 
-            textBox.LostFocus += async (_, _) => await onPathChanged(textBox.Text?.Trim() ?? string.Empty);
-            return textBox;
+            CrescentTextBox.LostFocus += async (_, _) => await onPathChanged(CrescentTextBox.Text?.Trim() ?? string.Empty);
+            return CrescentTextBox;
         }
 
-        public static CrescentButton GetBrowseButton(Control owner, bool isFile, TextBox textBox, Func<string, Task> onPathChanged)
+        public static CrescentButton GetBrowseButton(Control owner, bool isFile, CrescentTextBox CrescentTextBox, Func<string, Task> onPathChanged)
         {
             CrescentButton browseButton = new(ButtonStyle.Translucent)
             {
@@ -187,7 +466,7 @@ namespace Crescent.UI
                     if (files.Count > 0)
                     {
                         string path = files[0].Path.LocalPath;
-                        textBox.Text = path;
+                        CrescentTextBox.Text = path;
                         await onPathChanged(path);
                     }
                 }
@@ -202,7 +481,7 @@ namespace Crescent.UI
                     if (folders.Count > 0)
                     {
                         string path = folders[0].Path.LocalPath;
-                        textBox.Text = path;
+                        CrescentTextBox.Text = path;
                         await onPathChanged(path);
                     }
                 }

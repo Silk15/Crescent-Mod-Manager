@@ -1,6 +1,6 @@
 <Project>
     <PropertyGroup>
-        <CrescentInstallDir>E:\Silk\Personal\Pictures\Crescent Mod Manager</CrescentInstallDir>
+        <CrescentInstallDir>E:\Programs\Applications\Crescent Mod Manager</CrescentInstallDir>
         <OutputPath>$(CrescentInstallDir)\Managed\</OutputPath>
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>

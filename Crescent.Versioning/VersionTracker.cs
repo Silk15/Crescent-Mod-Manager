@@ -1,4 +1,4 @@
-using Crescent.Json.Serialization;
+using Silk.Utilities;
 
 namespace Crescent.Versioning
 {
@@ -31,7 +31,7 @@ namespace Crescent.Versioning
                 {
                     lastLaunchedVersion = Version.Clean(Runtime.Version)
                 };
-                _ = loaded.SaveAsync();
+                loaded.SaveAsync().FireAndForget();
                 return loaded;
             }
 
@@ -43,7 +43,7 @@ namespace Crescent.Versioning
                 loaded.previousVersion = loaded.lastLaunchedVersion;
                 loaded.lastLaunchedVersion = currentClean;
                 loaded.showPostUpdatePopup = true;
-                _ = loaded.SaveAsync();
+                loaded.SaveAsync().FireAndForget();
             }
 
             return loaded;

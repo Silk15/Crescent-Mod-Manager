@@ -1,6 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
-using Crescent.Utilities;
+using Silk.Utilities;
 
 namespace Crescent.Plugins;
 
@@ -25,19 +25,7 @@ public class PluginStartupProcess : IStartupProcess
             string directory = directories[index];
             string folderName = Path.GetFileName(directory);
             Logger.Log($"   - {folderName}", false);
-
-            foreach (string assemblyPath in Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly))
-            {
-                try
-                {
-                    Assembly assembly = LoadAssembly(assemblyPath);
-                    allTasks.Add(new LoadPluginTask(assembly, directory));
-                }
-                catch (Exception exception)
-                {
-                    Logger.Error(exception.ToString());
-                }
-            }
+            allTasks.Add(new LoadPluginTask(directory));
         }
 
         return allTasks;
@@ -53,19 +41,8 @@ public class PluginStartupProcess : IStartupProcess
     public static async Task LoadPluginAsync(string directory)
     {
         if (!Directory.Exists(directory)) return;
-        foreach (string assemblyPath in Directory.GetFiles(directory, "*.dll", SearchOption.TopDirectoryOnly))
-        {
-            try
-            {
-                Assembly assembly = LoadAssembly(assemblyPath);
-                LoadPluginTask loadTask = new(assembly, directory);
-                await loadTask.ExecuteAsync(_ => { });
-            }
-            catch (Exception exception)
-            {
-                Logger.Error(exception.ToString());
-            }
-        }
+        LoadPluginTask loadTask = new(directory);
+        await loadTask.ExecuteAsync(_ => { });
     }
 
     public delegate IEnumerable<IStartupTask> OnStartupTasksGathered();

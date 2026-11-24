@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Silk.Utilities;
 
 namespace Crescent.Plugins
 {

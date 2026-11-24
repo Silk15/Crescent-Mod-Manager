@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Crescent.APIs.NexusMods;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Silk.Utilities;
 
 namespace Crescent.Plugins
 {
@@ -22,6 +23,7 @@ namespace Crescent.Plugins
 
         public string filePath;
         public string modName;
+        public string nexusName;
         public string displayName;
         public string version;
 
@@ -33,12 +35,14 @@ namespace Crescent.Plugins
 
         public Update update = new();
         public Url url;
-
+        
         [JsonIgnore] public string DisplayName
         {
             get
             {
+                if (!string.IsNullOrEmpty(nexusName)) return nexusName;
                 if (!string.IsNullOrEmpty(displayName)) return displayName;
+
                 string clean = ModNameRegex.Replace(modName, string.Empty);
                 clean = ModCleanRegex.Replace(clean, string.Empty);
 
@@ -52,6 +56,7 @@ namespace Crescent.Plugins
                 return displayName = clean;
             }
         }
+        
         [JsonIgnore] public string LatestVersion
         {
             get => update.latestVersion;
@@ -124,19 +129,19 @@ namespace Crescent.Plugins
 
         public Url GetUrl(string baseUrl)
         {
-            Match idMatch = ModIdRegex.Match(this.modName);
+            Match idMatch = ModIdRegex.Match(modName);
             if (idMatch.Success)
             {
                 string idValue = idMatch.Value;
                 url = new(baseUrl, idValue);
 
                 int idIndex = idMatch.Index;
-                string afterId = this.modName.Substring(idIndex + idValue.Length);
+                string afterId = modName.Substring(idIndex + idValue.Length);
                 Match versionAfterIdMatch = Regex.Match(afterId, @"^[\s\-_]+v?(\d+(?:[.-]\d+)*[a-zA-Z]*)");
                 if (versionAfterIdMatch.Success) version = NexusUtils.TryCleanVersion(versionAfterIdMatch.Groups[1].Value.Replace('-', '.'));
                 else
                 {
-                    Match versionMatch = VersionRegex.Match(this.modName);
+                    Match versionMatch = VersionRegex.Match(modName);
                     if (versionMatch.Success) version = NexusUtils.TryCleanVersion(versionMatch.Groups[1].Value.Replace('-', '.'));
                 }
             }

@@ -6,22 +6,31 @@ namespace Crescent.Plugins
         public string name = "Default";
         public List<ProfileModData> mods = new();
 
-        public bool IsModInstalled(ModData modData)
+        public bool IsModInstalled(ModData? modData)
         {
+            if (modData == null) return false;
             for (int index = 0; index < mods.Count; index++)
-                if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase)) return true;
+            {
+                if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
             return false;
         }
 
-        public bool IsModEnabled(ModData modData)
+        public bool IsModEnabled(ModData? modData)
         {
+            if (modData == null) return false;
             for (int index = 0; index < mods.Count; index++)
-                if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase)) return mods[index].isEnabled;
+            {
+                if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase)) 
+                    return mods[index].isEnabled;
+            }
             return false;
         }
 
-        public void SetModEnabled(ModData modData, bool isEnabled)
+        public void SetModEnabled(ModData? modData, bool isEnabled)
         {
+            if (modData == null) return;
             for (int index = 0; index < mods.Count; index++)
             {
                 if (string.Equals(mods[index].modName, modData.modName, StringComparison.OrdinalIgnoreCase))

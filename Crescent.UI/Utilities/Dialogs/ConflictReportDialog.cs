@@ -5,9 +5,11 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Crescent.Plugins;
+using Crescent.UI.Controls;
+using Crescent.UI.Windows;
 using Crescent.Utilities;
 
-namespace Crescent.UI
+namespace Crescent.UI.Dialogs
 {
     public class ConflictReportDialog : Dialog
     {
@@ -88,7 +90,7 @@ namespace Crescent.UI
                 Border conflictBorder = new()
                 {
                     Background = Colors.Button,
-                    CornerRadius = new CornerRadius(6),
+                    CornerRadius = new CornerRadius(4),
                     Padding = new Thickness(12, 10)
                 };
 
@@ -123,7 +125,7 @@ namespace Crescent.UI
                     TextTrimming = TextTrimming.CharacterEllipsis
                 });
 
-                ComboBox winnerSelector = new()
+                CrescentComboBox winnerSelector = new()
                 {
                     ItemsSource = contendingMods.Select(mod => mod.DisplayName.Cleaned()).ToList(),
                     SelectedIndex = contendingMods.Count - 1,
@@ -175,7 +177,7 @@ namespace Crescent.UI
                 HorizontalAlignment = HorizontalAlignment.Right
             };
 
-            CrescentButton confirmButton = new(Colors.Green)
+            CrescentButton confirmButton = new(Colors.Accent)
             {
                 Content = "Apply Priorities & Proceed",
                 Width = 190

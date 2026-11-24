@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using Silk.Utilities;
 
 namespace Crescent.Versioning
 {

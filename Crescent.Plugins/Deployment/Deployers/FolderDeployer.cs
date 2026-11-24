@@ -1,4 +1,4 @@
-using Crescent.Utilities;
+using Silk.Utilities;
 
 namespace Crescent.Plugins
 {
@@ -110,7 +110,7 @@ namespace Crescent.Plugins
             string summary = $"Withdrew {withdrawnCount} mod{withdrawnCount.WithPlural()}";
             plugin.SetDeploymentStatus(DeploymentState.NotDeployed, summary);
             Notify("Mods Withdrawn", $"{summary} from {plugin.Name}", "Success");
-            _ = plugin.SaveAsync();
+            plugin.SaveAsync().FireAndForget();
         }
 
         public override void WithdrawMod(ModData mod)
@@ -129,7 +129,7 @@ namespace Crescent.Plugins
 
                 plugin.SetDeploymentStatus(state, $"Withdrew {mod.DisplayName}");
                 Notify("Mod Withdrawn", $"Removed {mod.DisplayName} from {plugin.Name}", "Success");
-                _ = plugin.SaveAsync();
+                plugin.SaveAsync().FireAndForget();
             }
             catch (Exception exception)
             {

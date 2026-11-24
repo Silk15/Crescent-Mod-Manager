@@ -8,7 +8,7 @@
         <ApplicationIcon>crescent.ico</ApplicationIcon>
         <PublisherName>Silk15</PublisherName>
         <ProductName>Crescent Mod Manager</ProductName>
-        <CrescentInstallDir>E:\Silk\Personal\Pictures\Crescent Mod Manager</CrescentInstallDir>
+        <CrescentInstallDir>E:\Programs\Applications\Crescent Mod Manager</CrescentInstallDir>
         <PublishSingleFile>false</PublishSingleFile>
         <SelfContained>true</SelfContained>
         <Company>Silk15</Company>
@@ -29,5 +29,11 @@
 
     <ItemGroup>
       <None Remove="crescent.ico" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="14.0.1-beta2" />
+      <PackageReference Include="SharpCompress" Version="0.51.0-beta.174" />
+      <PackageReference Include="Silk.Utilities" Version="1.0.0" />
     </ItemGroup>
 </Project>

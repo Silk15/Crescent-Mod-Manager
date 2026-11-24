@@ -1,5 +1,5 @@
 using Crescent.Plugins;
-using Crescent.Utilities;
+using Silk.Utilities;
 using DiscordRPC;
 
 namespace Crescent.APIs.Discord

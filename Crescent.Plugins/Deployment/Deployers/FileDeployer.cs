@@ -1,5 +1,5 @@
 using Crescent.IO;
-using Crescent.Utilities;
+using Silk.Utilities;
 
 namespace Crescent.Plugins
 {
@@ -166,7 +166,7 @@ namespace Crescent.Plugins
 
             plugin.SetDeploymentStatus(DeploymentState.NotDeployed, summary);
             Notify("Mods Withdrawn", summary, "Success", 4000, detail);
-            _ = plugin.SaveAsync();
+            plugin.SaveAsync().FireAndForget();
         }
 
         public override void WithdrawMod(ModData mod)
@@ -187,7 +187,7 @@ namespace Crescent.Plugins
 
                 plugin.SetDeploymentStatus(newState, $"Withdrew {mod.DisplayName}");
                 Notify("Mod Withdrawn", $"Removed {mod.DisplayName} from {plugin.Name}", "Success");
-                _ = plugin.SaveAsync();
+                plugin.SaveAsync().FireAndForget();
             }
             catch (Exception exception)
             {
@@ -369,7 +369,7 @@ namespace Crescent.Plugins
             string message = hasEnabledUndeployedMods ? "No deployable files found in staging!" : "All enabled mods are already deployed";
             plugin.SetDeploymentStatus(state, message);
             PluginData.CompleteProgressToast(plugin.Name, message, hasEnabledUndeployedMods ? "Warning" : "Info", 4000);
-            _ = plugin.SaveAsync();
+            plugin.SaveAsync().FireAndForget();
         }
 
         public virtual void FinishDeployment(int processedFiles, int failedFiles, int totalDeployedModCount, int backedUpVanillaFiles)
@@ -386,7 +386,7 @@ namespace Crescent.Plugins
 
             plugin.SetDeploymentStatus(state, statusText);
             PluginData.CompleteProgressToast(failedFiles > 0 ? "Partial Deployment" : "Deployment Complete", statusText, failedFiles > 0 ? "Warning" : "Success", 4500, detailText);
-            _ = plugin.SaveAsync();
+            plugin.SaveAsync().FireAndForget();
         }
     }
 }
