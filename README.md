@@ -21,6 +21,7 @@ And that's it. When you start Crescent you'll be able to set staging and executa
 <img width="1919" height="1079" alt="Screenshot 2026-11-24 212337" src="https://github.com/user-attachments/assets/a4223b8d-d270-41ed-a766-8b968b17c3f2" />
 
 > AI Disclosure & Information!
+
 > Parts of Crescent Mod Manager were developed with the assistance of AI tools such as:
 >  - *UI code, including the original base*
 >  - *File deployment logic*
