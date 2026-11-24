@@ -5,8 +5,6 @@ A lightweight mod manager capable of working with (almost) any game on Nexus Mod
 - [Stardew Valley](https://www.nexusmods.com/games/stardewvalley)
 - [Cyberpunk 2077](https://www.nexusmods.com/games/cyberpunk2077)
 
-<img width="1919" height="1079" alt="Screenshot 2026-11-24 212306" src="https://github.com/user-attachments/assets/0dc28bb9-c32a-4a92-b3ab-ba158950c42a" />
-
 ## Install
 - Crescent uses Windows Symlinks to create "pointers" to mod files and assets. Please enable the setting below before continuing:
   - Open the Windows Settings app.
@@ -22,9 +20,10 @@ And that's it. When you start Crescent you'll be able to set staging and executa
 <img width="1919" height="1079" alt="Screenshot 2026-11-24 212321" src="https://github.com/user-attachments/assets/69be7747-d71d-4497-af2b-9d0ffe543573" />
 <img width="1919" height="1079" alt="Screenshot 2026-11-24 212337" src="https://github.com/user-attachments/assets/a4223b8d-d270-41ed-a766-8b968b17c3f2" />
 
-> *Parts of this project were written with AI and/or AI Assistance, such as:*
-> - *The **base** of the UI*
-> - *Nexus API requests*
-> - *A good chunk of the file deployment.*
+> AI Disclosure & Information!
+> Parts of Crescent Mod Manager were developed with the assistance of AI tools such as:
+>  - *UI code, including the original base*
+>  - *File deployment logic*
+>  - *Nexus API requests*
 
-> *However that code has been majorly refactored to actually work with my project and be extensible. Both in the way I want and literally. I refuse to ever entirely vibe code something or paste code in, especially not without extensively checking it.*
+> However, every line of AI-generated code is thoroughly reviewed, refactored, and tested to ensure it fits my standards. This is a human-led project where AI acts strictly as an assistant.
