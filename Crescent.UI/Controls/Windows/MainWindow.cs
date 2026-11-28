@@ -50,7 +50,6 @@ namespace Crescent.UI.Windows
         public MainWindow()
         {
             Vector2 size = Settings.Instance.saveWindowSize ? Settings.Instance.windowSize : new(1500, 900);
-            Screen? screen = Screens.Primary;
             try
             {
                 Title = TitleText;

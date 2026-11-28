@@ -6,7 +6,7 @@ namespace Crescent.UI
     [Serializable]
     public class Settings
     {
-        public static readonly string SettingsFilePath = Path.Combine(Runtime.DataPath, "settings.json");
+        public static readonly string SettingsPath = Path.Combine(Runtime.DataPath, "settings.json");
 
         private static Settings? instance;
         
@@ -27,14 +27,14 @@ namespace Crescent.UI
         {
             get
             {
-                if (instance == null) instance = LoadSync();
+                if (instance == null) instance = Load();
                 return instance;
             }
         }
 
-        public static Settings LoadSync()
+        public static Settings Load()
         {
-            Settings? loaded = FileManager.ReadJson<Settings>(SettingsFilePath);
+            Settings? loaded = FileManager.ReadJson<Settings>(SettingsPath);
             if (loaded != null) instance = loaded;
             else instance = new();
             return instance;
@@ -44,9 +44,9 @@ namespace Crescent.UI
         {
             try
             {
-                string? directory = Path.GetDirectoryName(SettingsFilePath);
+                string? directory = Path.GetDirectoryName(SettingsPath);
                 if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory)) Directory.CreateDirectory(directory);
-                await FileManager.WriteJsonAsync(SettingsFilePath, this);
+                await FileManager.WriteJsonAsync(SettingsPath, this);
             }
             catch (Exception exception)
             {
